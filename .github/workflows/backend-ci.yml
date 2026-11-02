@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - chore/estrutura-inicial
+      - chore/postgres-local
   pull_request:
     branches:
       - main
@@ -18,6 +19,26 @@ jobs:
     name: Compilar e testar backend
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: simpi_test
+          POSTGRES_USER: simpi_ci
+          POSTGRES_PASSWORD: simpi_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U simpi_ci -d simpi_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_URL: jdbc:postgresql://127.0.0.1:5432/simpi_test
+      POSTGRES_USER: simpi_ci
+      POSTGRES_PASSWORD: simpi_ci_only
 
     defaults:
       run:
@@ -36,4 +57,4 @@ jobs:
           cache-dependency-path: backend/pom.xml
 
       - name: Compilar, testar e gerar JAR
-        run: bash ./mvnw --batch-mode --no-transfer-progress verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress verify -Pintegration
