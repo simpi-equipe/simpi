@@ -1,10 +1,10 @@
 # Entidades e atributos do SIMPI
 
-Transcrição das tabelas do dicionário técnico de 23/10/2026, recuperadas do arquivo utilizado para gerar o documento aprovado. Tipos e tamanhos são sugestões; não representam migrations já implementadas.
+Transcrição das tabelas do dicionário técnico de 23/10/2026, recuperadas do arquivo utilizado para gerar o documento aprovado. Tipos e tamanhos das quatro primeiras entidades foram adotados na migration V1, aplicada com sucesso no PostgreSQL de integração. A validação manual informada de `verify -Pintegration` concluiu 20 testes, sem falhas ou erros, com `BUILD SUCCESS`. As demais tabelas permanecem como referência para entregas futuras.
 
 As decisões de fluxo posteriores estão em [Regras e fluxos](regras-e-fluxos.md) e no [contrato da API v1.1](contratos-api-v1.1.md). Consulte também as [pendências de implementação](documentacao-funcional.md#pendencias-antes-das-migrations).
 
-PK: chave primária. FK: chave estrangeira. UNIQUE: valor único. A coluna Nulo informa se o atributo aceita ausência de valor. ENUM representa um domínio fechado de valores; sua representação no PostgreSQL ainda será definida.
+PK: chave primária. FK: chave estrangeira. UNIQUE: valor único. A coluna Nulo informa se o atributo aceita ausência de valor. ENUM representa um domínio fechado de valores; PerfilUsuario usa VARCHAR com CHECK na V1 e os demais domínios ainda serão definidos.
 
 ## 1 Setor — setor
 
@@ -15,6 +15,12 @@ PK: chave primária. FK: chave estrangeira. UNIQUE: valor único. A coluna Nulo 
 | nome | VARCHAR(150) | Não | — |
 | gestor_id | BIGINT | Não | FK → usuario.id |
 | ativo | BOOLEAN | Não | Padrão: TRUE |
+
+O gestor pertence ao setor gerenciado e possui perfil GESTOR. Essas condições
+do modelo original foram restauradas por confirmação do responsável, pois
+haviam sido omitidas na consolidação. A FK é obrigatória e adiável; perfil e
+pertencimento são validados na aplicação e respeitados nas fixtures, sem
+garantia cruzada no banco. gestor_id não possui UNIQUE.
 
 ## 2 Usuário — usuario
 

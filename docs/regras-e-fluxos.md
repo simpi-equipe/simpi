@@ -7,6 +7,8 @@ Resumo operacional das decisões já registradas no [contrato da API v1.1](contr
 - Um bem por solicitação e apenas uma solicitação ativa por bem.
 - Cadastros preparados para demonstração; sem CRUD administrativo completo, anexos ou integração com SCI/ERP.
 - Responsável por bem é um usuário do protótipo. Cada usuário pertence a um setor; cada setor possui um gestor designado.
+- O gestor designado pertence ao setor gerenciado e possui perfil GESTOR,
+  conforme regra original restaurada por confirmação do responsável.
 - Localizações são independentes dos setores.
 - Bem inativo não pode iniciar uma transferência. O responsável de destino precisa estar ativo e pertencer ao setor de destino.
 - Pelo menos setor, localização ou responsável de destino deve diferir da origem.

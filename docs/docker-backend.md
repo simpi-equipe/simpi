@@ -190,9 +190,22 @@ O build da imagem executa verify sem o perfil integration e não
 exige banco externo. O CI ativa esse perfil com um PostgreSQL
 temporário, separado dos bancos locais.
 
-Flyway será responsável pelas futuras migrations em
-backend/src/main/resources/db/migration. Hibernate apenas valida
-o esquema, sem criar ou alterar tabelas. Ainda não há entidades,
-migrations ou consultas de negócio; nesta etapa a integração
-verifica inicialização, SELECT 1 e validação Flyway. A tabela
-de histórico do próprio Flyway é infraestrutura.
+Flyway controla as migrations em backend/src/main/resources/db/migration.
+A V1 e os mapeamentos das quatro entidades da fundação patrimonial estão
+escritos. Hibernate apenas valida o esquema. A nova cobertura de integração
+inclui aplicação da V1, JPA, relacionamentos, restrições e rollback. Na
+validação manual informada, `verify -Pintegration` concluiu 20 testes, sem
+falhas ou erros, com BUILD SUCCESS. A V1 foi aplicada com sucesso no PostgreSQL.
+
+Antes de criar o DataSource ou executar Flyway, os testes Spring bloqueiam
+qualquer URL fora do formato PostgreSQL com host localhost, 127.0.0.1 ou
+[::1], banco exatamente simpi_test e porta opcional válida. Não aceitam
+parâmetros, credenciais na URL, múltiplos hosts ou URLs alternativas para
+Flyway/Hikari/JNDI. Não é necessário mudar as URLs local e CI existentes.
+Uma execução remota exige revisão explícita da proteção de testes.
+
+As fixtures são exclusivamente sintéticas. O teste de commit positivo
+mantém um cenário sintético no banco de testes; os demais cenários de dados
+usam rollback. Não há limpeza de dados preexistentes. Consulte as
+[decisões técnicas](documentacao-funcional.md#decisões-técnicas-da-fundação-patrimonial)
+para os limites do ciclo setor/gestor e das garantias no banco.
