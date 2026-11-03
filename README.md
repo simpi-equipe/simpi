@@ -18,8 +18,9 @@ A infraestrutura inicial do backend está configurada:
 As funcionalidades de negócio, entidades e migrations de negócio ainda
 não foram implementadas. Não há endpoints de negócio disponíveis.
 
-O frontend ainda não foi iniciado. A próxima configuração prevista
-usará React com JavaScript.
+O frontend mínimo usa React com JavaScript e Vite, com uma página de
+identificação do SIMPI. Ele pode ser executado e compilado independentemente
+do backend e dos bancos.
 
 ## Stack e pré-requisitos
 
@@ -32,6 +33,8 @@ usará React com JavaScript.
 | Build do backend | Maven Wrapper |
 | Ambiente local | Docker e Docker Compose |
 | CI | GitHub Actions |
+| Frontend | React 19.3.0 e Vite 8.3.5, com JavaScript |
+| Ambiente do frontend | Node.js 24.22.2 LTS e npm 11.19.1 |
 
 As dependências do backend estão no [pom.xml](backend/pom.xml).
 
@@ -58,7 +61,8 @@ A versão disponível no futuro projeto Supabase ainda deverá ser conferida.
 simpi/
 ├── .github/
 │   └── workflows/
-│       └── backend-ci.yml
+│       ├── backend-ci.yml
+│       └── frontend-ci.yml
 ├── backend/
 │   ├── .mvn/
 │   ├── src/
@@ -69,6 +73,13 @@ simpi/
 │   ├── mvnw
 │   ├── mvnw.cmd
 │   └── pom.xml
+├── frontend/
+│   ├── src/
+│   ├── .nvmrc
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   └── vite.config.js
 ├── docs/
 │   └── docker-backend.md
 ├── .env.example
@@ -81,7 +92,30 @@ simpi/
 Consulte o [backend](backend/), a [documentação](docs/),
 o [Compose](compose.yaml) e os [workflows](.github/workflows/).
 
-Ainda não existe uma pasta de frontend.
+## Frontend: instalação, execução e build
+
+Instale Node.js 24.22.2 LTS, que inclui npm 11.19.1. A versão do Node
+também está registrada em [frontend/.nvmrc](frontend/.nvmrc).
+Partindo da raiz do repositório:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Abra o endereço informado pelo Vite, normalmente http://localhost:5173.
+Para compilar e, opcionalmente, conferir o resultado localmente:
+
+```powershell
+npm run build
+npm run preview
+```
+
+O build gera `frontend/dist/`. O lockfile deve ser versionado;
+`node_modules/`, `dist/` e arquivos `.env` reais são ignorados.
+O frontend atual não exige `.env`, credenciais, backend ou banco.
+Bibliotecas adicionais serão escolhidas pela pessoa responsável pelo frontend.
 
 ## Preparar o ambiente local
 
@@ -252,6 +286,16 @@ Ele roda em PRs destinados à `main`, em pushes para `main`,
 `chore/estrutura-inicial` e `chore/postgres-local`, e também permite
 execução manual. Outras branches são validadas ao abrir PR para `main`.
 
+O [workflow Frontend CI](.github/workflows/frontend-ci.yml) usa Node.js 24,
+cache npm baseado em `frontend/package-lock.json`, `npm ci` e
+`npm run build`, dentro de `frontend/`, com permissão `contents: read`.
+Ele é independente do backend e do banco e não faz deploy nem exige
+credenciais configuradas pela equipe.
+
+O CI do frontend roda em PRs destinados à `main` e em pushes para `main`
+e `chore/frontend-js`, quando há alterações em `frontend/` ou no próprio
+workflow. Também permite execução manual.
+
 ## Como contribuir
 
 Antes de começar, confira o estado do repositório e preserve qualquer
@@ -291,7 +335,7 @@ específica.
   e regras de negócio.
 - Criar migrations versionadas pelo Flyway e entidades correspondentes.
 - Implementar regras de negócio e endpoints com testes adequados.
-- Iniciar o frontend React com JavaScript.
+- Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
   antes de planejar a conexão remota.
 
