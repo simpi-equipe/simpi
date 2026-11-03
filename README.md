@@ -81,7 +81,13 @@ simpi/
 │   ├── package-lock.json
 │   └── vite.config.js
 ├── docs/
-│   └── docker-backend.md
+│   ├── contratos-api-v1.1.md
+│   ├── der-simplificado.png
+│   ├── docker-backend.md
+│   ├── documentacao-funcional.md
+│   ├── entidades-e-atributos.md
+│   ├── enums.md
+│   └── regras-e-fluxos.md
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
@@ -91,6 +97,8 @@ simpi/
 
 Consulte o [backend](backend/), a [documentação](docs/),
 o [Compose](compose.yaml) e os [workflows](.github/workflows/).
+
+Consulte a [documentação funcional](docs/documentacao-funcional.md) para o modelo, as regras e os contratos da API.
 
 ## Frontend: instalação, execução e build
 
@@ -331,13 +339,15 @@ específica.
 
 ## Próximas etapas
 
-- Documentar entidades, fluxos patrimoniais, contratos da API
-  e regras de negócio.
+- Resolver e validar as pendências técnicas registradas na
+  [documentação funcional](docs/documentacao-funcional.md#pendencias-antes-das-migrations)
+  antes de implementar os objetos afetados.
 - Criar migrations versionadas pelo Flyway e entidades correspondentes.
 - Implementar regras de negócio e endpoints com testes adequados.
 - Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
   antes de planejar a conexão remota.
 
-A documentação funcional ainda está pendente. O guia operacional
-existente é [Backend com Docker](docs/docker-backend.md).
+A [documentação funcional](docs/documentacao-funcional.md) está disponível,
+com entidades, enums, fluxos, contratos da API e pendências técnicas.
+O guia operacional é [Backend com Docker](docs/docker-backend.md).
