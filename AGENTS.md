@@ -29,6 +29,11 @@
 - Usar português do Brasil nos identificadores definidos pela equipe,
   incluindo classes, DTOs, métodos, atributos, variáveis, pacotes,
   tabelas, colunas e testes.
+- Exceção explícita: manter o domínio em português e usar os sufixos
+  técnicos convencionais Controller, Service, Repository, Request,
+  Response e Mapper, como SolicitacaoRepository e CriarSolicitacaoRequest.
+  Entidades, métodos, atributos e variáveis continuam em português.
+  Essa convenção não exige criar camadas sem necessidade concreta.
 - Escrever identificadores sem acentos ou cedilha, respeitando as
   convenções da linguagem. Usar acentuação normal em mensagens
   e documentação.

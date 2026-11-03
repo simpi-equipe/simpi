@@ -11,12 +11,14 @@ A infraestrutura inicial do backend está configurada:
 - Aplicação Spring Boot com suporte a validação, JPA e PostgreSQL.
 - Construção e execução do backend com Docker.
 - Bancos separados para desenvolvimento e integração.
-- Flyway configurado para controlar futuras migrations.
+- Flyway com a primeira migration de Setor, Usuario, Localizacao e BemPatrimonial.
 - Hibernate configurado para validar o esquema, sem criar ou alterar tabelas.
 - Teste de integração e workflow de CI do backend.
 
-As funcionalidades de negócio, entidades e migrations de negócio ainda
-não foram implementadas. Não há endpoints de negócio disponíveis.
+A fundação patrimonial possui entidades JPA, repositories e testes de
+integração para as quatro tabelas. A validação manual informada de
+`verify -Pintegration` concluiu 20 testes, sem falhas ou erros, com
+`BUILD SUCCESS`. Não há endpoints de negócio disponíveis.
 
 O frontend mínimo usa React com JavaScript e Vite, com uma página de
 identificação do SIMPI. Ele pode ser executado e compilado independentemente
@@ -261,11 +263,23 @@ $env:POSTGRES_PASSWORD = Read-Host -MaskInput "Senha definida em POSTGRES_TEST_P
 ```
 
 O perfil Maven `integration` executa testes com nomes `*IT`.
-A cobertura atual verifica a inicialização do contexto, uma consulta
-`SELECT 1` e a validação do Flyway.
+A cobertura escrita verifica inicialização, aplicação da V1, validação do
+Flyway, mapeamentos JPA, perfis, referências, obrigatoriedade, unicidade,
+tamanhos e rollback. A validação manual informada de `verify -Pintegration`
+concluiu 20 testes, sem falhas ou erros, com `BUILD SUCCESS`; a V1 foi aplicada
+com sucesso no PostgreSQL de integração.
 
-Isso ainda não valida funcionalidades, consultas ou migrations de negócio,
-pois elas não foram implementadas.
+Antes de criar os beans e executar Flyway, os testes Spring validam a URL:
+somente PostgreSQL com host `localhost`, `127.0.0.1` ou `[::1]` e banco
+exatamente `simpi_test`. URLs com parâmetros, múltiplos hosts, credenciais,
+portas inválidas ou formatos alternativos são bloqueadas. URLs separadas
+para Flyway, Hikari e JNDI também são bloqueadas. Execução remota exige
+revisão explícita da proteção, exclusiva dos testes.
+
+As fixtures são sintéticas e usam códigos exclusivos. O teste de commit
+válido mantém um cenário sintético no banco de testes para comprovar o
+fechamento real do ciclo setor/gestor; os demais cenários de dados usam
+rollback. Não existe rotina de limpeza ou exclusão de dados preexistentes.
 
 Use terminais separados para desenvolvimento e testes, evitando reutilizar
 as variáveis do banco errado. Veja também o
@@ -342,7 +356,7 @@ específica.
 - Resolver e validar as pendências técnicas registradas na
   [documentação funcional](docs/documentacao-funcional.md#pendencias-antes-das-migrations)
   antes de implementar os objetos afetados.
-- Criar migrations versionadas pelo Flyway e entidades correspondentes.
+- Criar migrations e entidades das próximas entregas conforme aprovação.
 - Implementar regras de negócio e endpoints com testes adequados.
 - Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
