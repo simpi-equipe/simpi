@@ -35,7 +35,7 @@ class BackendApplicationIT {
                 banco.queryForObject("SELECT 1", Integer.class)
         );
         assertTrue(flyway.validateWithResult().validationSuccessful);
-        assertEquals("1", flyway.info().current().getVersion().getVersion());
+        assertEquals("2", flyway.info().current().getVersion().getVersion());
         assertEquals(0, flyway.info().pending().length);
     }
 }

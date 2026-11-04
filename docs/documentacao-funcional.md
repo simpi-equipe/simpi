@@ -13,6 +13,7 @@ erros, com `BUILD SUCCESS`.
 | [Enums](enums.md) | Cinco domínios fechados de valores |
 | [Regras e fluxos](regras-e-fluxos.md) | Fluxo, permissões, consistência, sessão e testes prioritários |
 | [Contratos da API v1.1](contratos-api-v1.1.md) | Rotas, DTOs, validações, respostas e erros |
+| [Modelo de solicitações e movimentação](modelo-solicitacoes-movimentacao.md) | Decisões da V2, numeração, UTC, restrições e limites das garantias |
 | [DER simplificado](der-simplificado.png) | Apoio visual aos relacionamentos principais |
 
 ## Origem e precedência
@@ -25,11 +26,11 @@ Manter português do Brasil nos identificadores definidos pela equipe, preservan
 
 ## Pendencias antes das migrations
 
-1. **Número da solicitação:** o contrato possui numero gerado pelo backend, mas o dicionário técnico antigo não contém esse atributo. Propor geração, armazenamento, unicidade e tamanho antes de criar a tabela solicitacao.
-2. **Datas em UTC:** o dicionário sugere TIMESTAMP genericamente; definir o tipo Java e o tipo PostgreSQL que implementarão corretamente o contrato em UTC.
+1. **Número da solicitação:** decisão aprovada para a V2: sequência global sem reinício anual, ano UTC de criadaEm, mínimo de quatro dígitos sem truncamento e numero VARCHAR(28) NOT NULL UNIQUE. Validação manual informada de `verify -Pintegration`: 38 testes, zero falhas, zero erros e `BUILD SUCCESS`; veja o registro no documento do modelo.
+2. **Datas em UTC:** decisão aprovada para a V2: Instant e TIMESTAMP WITH TIME ZONE. A geração do número e a entidade compartilham criadaEm com precisão de microssegundos.
 3. **Setor e gestor:** decisão implementada na V1, descrita abaixo. O gestor é obrigatório, pertence ao setor gerenciado e possui perfil GESTOR; as duas últimas condições foram omitidas na consolidação e restauradas por confirmação do responsável.
-4. **Domínios fechados:** PerfilUsuario utiliza VARCHAR com CHECK e EnumType.STRING, conforme decisão abaixo. A representação dos demais enums permanece pendente. ENUM no dicionário não impõe o uso de tipos enum nativos do PostgreSQL.
-5. **Concorrência:** definir a implementação do bloqueio de solicitação ativa por bem e de decisões repetidas, incluindo constraints e transações. Essas garantias já são requisitos, embora o mecanismo ainda não esteja implementado.
+4. **Domínios fechados:** PerfilUsuario utiliza VARCHAR com CHECK e EnumType.STRING, conforme decisão abaixo. Os quatro enums da V2 seguem essa representação, com VARCHAR(40), sem enum nativo PostgreSQL.
+5. **Concorrência:** a V2 prepara índice único parcial por bem ativo e unicidade de aprovação por solicitação/etapa. Bloqueios transacionais, transições e prevenção de decisões/eventos repetidos permanecem responsabilidades dos futuros casos de uso; veja o documento do modelo.
 6. **Perfil administrador:** abertura de solicitações não definida. Consulta global não concede automaticamente permissões operacionais.
 
 Esses pontos distinguem lacunas técnicas de regras já aprovadas. Apresentar as escolhas para validação antes de implementar os objetos afetados. Não ampliar o MVP com CRUDs, integrações ou recursos não previstos.

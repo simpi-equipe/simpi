@@ -32,7 +32,13 @@
 - Exceção explícita: manter o domínio em português e usar os sufixos
   técnicos convencionais Controller, Service, Repository, Request,
   Response e Mapper, como SolicitacaoRepository e CriarSolicitacaoRequest.
-  Entidades, métodos, atributos e variáveis continuam em português.
+  Classes mantêm o domínio em português; métodos, atributos e variáveis
+  definidos pela equipe permanecem em português.
+  Dentro de cada funcionalidade, pacotes técnicos usam model, controller,
+  service, repository, dto e enums, conforme necessários. Esses nomes de
+  pacotes e os sufixos convencionais são exceções explícitas à regra geral
+  de idioma. Não criar pastas vazias ou reorganizar módulos existentes
+  automaticamente.
   Essa convenção não exige criar camadas sem necessidade concreta.
 - Escrever identificadores sem acentos ou cedilha, respeitando as
   convenções da linguagem. Usar acentuação normal em mensagens
