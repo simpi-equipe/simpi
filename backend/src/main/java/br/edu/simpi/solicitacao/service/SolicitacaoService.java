@@ -11,6 +11,7 @@ import br.edu.simpi.solicitacao.dto.SolicitacaoResponse;
 import br.edu.simpi.solicitacao.enums.EtapaAprovacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaCriacaoSolicitacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaDecisaoAprovacao;
+import br.edu.simpi.solicitacao.enums.MotivoFalhaCancelamentoSolicitacao;
 import br.edu.simpi.solicitacao.enums.StatusSolicitacao;
 import br.edu.simpi.solicitacao.enums.TipoEventoSolicitacao;
 import br.edu.simpi.solicitacao.model.Aprovacao;
@@ -30,6 +31,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -150,6 +152,59 @@ public class SolicitacaoService {
         return decidir(solicitacaoId, aprovacaoId, ator, justificativa.strip(), true);
     }
 
+    /** O ator vem da integração interna confiável; o motivo não altera a justificativa inicial. */
+    @Transactional
+    public SolicitacaoResponse cancelar(Long solicitacaoId, String motivo, Usuario ator) {
+        Map<String, String> erros = new LinkedHashMap<>();
+        if (solicitacaoId == null || solicitacaoId <= 0) {
+            erros.put("solicitacaoId", "Informe um identificador positivo.");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            erros.put("motivo", "Informe o motivo do cancelamento.");
+        }
+        if (!erros.isEmpty()) {
+            throw new ExcecaoCancelamentoSolicitacao(MotivoFalhaCancelamentoSolicitacao.DADOS_INVALIDOS,
+                    "Revise os campos informados.", erros);
+        }
+        recarregarAtorCancelamento(ator);
+        Solicitacao solicitacao = solicitacoes.buscarPorIdParaAtualizacao(solicitacaoId)
+                .orElseThrow(() -> falhaCancelamento(MotivoFalhaCancelamentoSolicitacao.SOLICITACAO_NAO_ENCONTRADA));
+        gerenciador.refresh(solicitacao, LockModeType.PESSIMISTIC_WRITE);
+        Usuario atorAtual = recarregarAtorCancelamento(ator);
+        RegrasCancelamentoSolicitacao.avaliar(solicitacao, atorAtual)
+                .ifPresent(impedimento -> { throw falhaCancelamento(impedimento); });
+
+        Instant instante = relogio.instant().truncatedTo(ChronoUnit.MICROS);
+        StatusSolicitacao estadoAnterior = solicitacao.getStatus();
+        solicitacao.cancelar();
+        eventos.save(new EventoSolicitacao(solicitacao, atorAtual, TipoEventoSolicitacao.CANCELAMENTO,
+                estadoAnterior, solicitacao.getStatus(), motivo.strip(), instante));
+        // Sem lock no bem: a criação já usa bem -> verificação de pedido ativo.
+        // Propagar falhas imediatamente; nenhuma consulta após erro de persistência.
+        solicitacoes.flush();
+        // Uma aprovação concorrente pode ter sido confirmada enquanto aguardávamos o lock.
+        List<Aprovacao> etapas = aprovacoes.buscarPorSolicitacao(solicitacaoId);
+        etapas.forEach(gerenciador::refresh);
+        return mapeador.mapear(solicitacao, etapas,
+                eventos.buscarPorSolicitacao(solicitacaoId), atorAtual);
+    }
+
+    private Usuario recarregarAtorCancelamento(Usuario ator) {
+        return recarregarUsuarioAtivo(ator)
+                .orElseThrow(() -> falhaCancelamento(MotivoFalhaCancelamentoSolicitacao.NAO_AUTENTICADO));
+    }
+
+    private ExcecaoCancelamentoSolicitacao falhaCancelamento(MotivoFalhaCancelamentoSolicitacao motivo) {
+        String mensagem = switch (motivo) {
+            case DADOS_INVALIDOS -> "Revise os campos informados.";
+            case NAO_AUTENTICADO -> "Usuário interno ausente, inexistente ou inativo.";
+            case ACAO_NAO_PERMITIDA -> "Ação não permitida para este usuário.";
+            case SOLICITACAO_NAO_ENCONTRADA -> "Solicitação não encontrada.";
+            case ESTADO_INCOMPATIVEL -> "O pedido não pode ser cancelado neste estado.";
+        };
+        return new ExcecaoCancelamentoSolicitacao(motivo, mensagem, Map.of());
+    }
+
     private SolicitacaoResponse decidir(Long solicitacaoId, Long aprovacaoId, Usuario ator,
             String justificativa, boolean recusa) {
         Map<String, String> erros = new LinkedHashMap<>();
@@ -204,16 +259,18 @@ public class SolicitacaoService {
     }
 
     private Usuario recarregarAtor(Usuario ator) {
-        if (ator == null || ator.getId() == null) {
-            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO);
-        }
-        Usuario atual = usuarios.findById(ator.getId())
+        return recarregarUsuarioAtivo(ator)
                 .orElseThrow(() -> falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO));
-        gerenciador.refresh(atual);
-        if (!atual.isAtivo()) {
-            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO);
+    }
+
+    private Optional<Usuario> recarregarUsuarioAtivo(Usuario ator) {
+        if (ator == null || ator.getId() == null) {
+            return Optional.empty();
         }
-        return atual;
+        return usuarios.findById(ator.getId()).map(atual -> {
+            gerenciador.refresh(atual);
+            return atual;
+        }).filter(Usuario::isAtivo);
     }
 
     private Usuario gestorDaSegundaEtapa(Solicitacao solicitacao) {
