@@ -164,3 +164,74 @@ Controller, exposição de `POST /api/solicitacoes` e integração com autentica
 permanecem pendentes. As demais ações do fluxo não foram implementadas nesta
 entrega. O motivo interno `GESTOR_DESIGNADO_INVALIDO` ainda não possui tradução
 HTTP definida.
+
+## Evolução: aprovação e recusa de etapas no service
+
+`SolicitacaoService.aprovar` e `recusar` recebem `solicitacaoId`, `aprovacaoId`
+e usuário ator por parâmetro interno confiável; a recusa também recebe a
+justificativa. O usuário é recarregado pelo ID e revalidado após eventual
+espera pelo bloqueio. Conta ativa, perfil GESTOR, setor atual, acesso pelos
+setores históricos e identidade do aprovador são verificados antes de expor
+estado ou decisão. O aprovador registrado na criação da etapa é preservado:
+trocar o gestor cadastrado não substitui uma designação existente.
+
+A aprovação deve pertencer ao pedido, estar pendente e corresponder à etapa
+aguardada. Aprovar `GESTOR_AREA` cria `GESTOR_RESPONSAVEL` pendente, designada
+ao gestor válido do setor de origem preservado, e avança o pedido para
+`AGUARDANDO_GESTOR_RESPONSAVEL`. Aprovar essa segunda etapa leva a `APROVADA`.
+Autoaprovação é permitida ao aprovador designado; o mesmo gestor nas duas
+etapas precisa de duas decisões explícitas, cada uma com seu `aprovacaoId`.
+Pedidos abertos por gestor continuam sem uma etapa de área ficticiamente aprovada.
+
+A recusa exige justificativa não vazia após remoção de espaços externos,
+registra a decisão e encerra o pedido como `RECUSADA`, sem criar etapas
+posteriores. Esse estado permite nova solicitação pelo índice parcial já
+existente. Aprovar e recusar não alteram o cadastro do bem nem as referências
+históricas do pedido. Eventos são apenas acrescentados.
+
+Cada operação usa uma transação e bloqueio pessimista exclusivo na
+solicitação, com atualização do estado carregado no contexto JPA. O instante
+da decisão é capturado uma vez, após o bloqueio e as revalidações, em UTC e
+com precisão de microssegundos, compartilhado pela decisão e pelo evento.
+Decisão, estado, eventual próxima etapa e evento são persistidos juntos;
+falhas de persistência são propagadas imediatamente para rollback, sem
+continuar consultando ou gravando na transação comprometida.
+
+Repetir uma etapa decidida produz o motivo `ETAPA_JA_DECIDIDA`; etapa pendente
+em estado incompatível produz `ESTADO_INCOMPATIVEL`. Aprovação ausente ou de
+outro pedido produz `APROVACAO_NAO_ENCONTRADA`, respeitada a verificação prévia
+de acesso. Os motivos permanecem independentes de HTTP. Em particular,
+`GESTOR_DESIGNADO_INVALIDO` é interno e sua tradução HTTP continua pendente,
+sem novo código público definido nesta entrega.
+
+O `SolicitacaoMapper` reutiliza o DTO completo `SolicitacaoResponse`,
+incluindo todas as aprovações na ordem do fluxo e eventos por instante e ID.
+`RegrasDecisaoAprovacao` compartilha as condições de autorização, pendência e
+estado entre as operações e as ações `APROVAR`/`RECUSAR` anunciadas em
+`acoesDisponiveis`. Anunciar as demais ações não implementa sua execução.
+
+Os testes `DecisaoAprovacaoServiceIT` e `ConcorrenciaDecisaoAprovacaoIT` cobrem
+sucesso, autoaprovação, decisões explícitas do mesmo gestor, recusa,
+permissões atuais, preservação da designação e das referências históricas,
+estado, repetição, resposta completa, cadastro do bem inalterado e rollback
+após falhas de gravação. As disputas nas duas etapas verificam um vencedor e
+um conflito, sem eventos duplicados. Há espera real pelo bloqueio em conexões
+independentes para verificar revalidação do ator e captura posterior do instante.
+
+No teste do relógio, a criação já executou `flush`; o contexto é limpo e a
+solicitação é recarregada com modo JPA `NONE` antes da decisão. A asserção
+de `PESSIMISTIC_WRITE` permanece dentro de `Clock.instant()`, sem aceitar
+outros modos. Isso evita herdar o modo interno `WRITE` da inserção na mesma
+transação, convertido pelo Hibernate para `PESSIMISTIC_FORCE_INCREMENT` na
+API JPA. A asserção verifica o modo registrado antes da captura do instante;
+os testes entre conexões complementam a garantia de exclusão efetiva.
+
+Validação manual final informada pelo responsável: **77 testes, zero falhas,
+zero erros, zero ignorados e `BUILD SUCCESS`**. O resultado é registrado conforme
+informado, sem repetir testes ou builds nesta revisão documental. Os registros
+das entregas anteriores permanecem como histórico.
+
+Controllers, endpoints de criação/aprovação/recusa, integração com autenticação
+e tradução HTTP de `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Cancelamento,
+envio, recebimento e consultas ficam fora desta entrega. Migrations, contratos,
+dependências e arquivos da autenticação não foram alterados.

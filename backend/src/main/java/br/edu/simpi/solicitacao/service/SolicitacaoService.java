@@ -10,6 +10,7 @@ import br.edu.simpi.solicitacao.dto.CriarSolicitacaoRequest;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse;
 import br.edu.simpi.solicitacao.enums.EtapaAprovacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaCriacaoSolicitacao;
+import br.edu.simpi.solicitacao.enums.MotivoFalhaDecisaoAprovacao;
 import br.edu.simpi.solicitacao.enums.StatusSolicitacao;
 import br.edu.simpi.solicitacao.enums.TipoEventoSolicitacao;
 import br.edu.simpi.solicitacao.model.Aprovacao;
@@ -22,8 +23,10 @@ import br.edu.simpi.usuario.PerfilUsuario;
 import br.edu.simpi.usuario.Usuario;
 import br.edu.simpi.usuario.UsuarioRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,6 +132,122 @@ public class SolicitacaoService {
             throw excecao;
         }
         return mapeador.mapearCriacao(solicitacao, aprovacao, evento, solicitanteAtual);
+    }
+
+    /** O ator é fornecido pela integração interna confiável, nunca pelo corpo HTTP. */
+    @Transactional
+    public SolicitacaoResponse aprovar(Long solicitacaoId, Long aprovacaoId, Usuario ator) {
+        return decidir(solicitacaoId, aprovacaoId, ator, null, false);
+    }
+
+    /** A justificativa é validada também em chamadas diretas ao service. */
+    @Transactional
+    public SolicitacaoResponse recusar(Long solicitacaoId, Long aprovacaoId, String justificativa, Usuario ator) {
+        if (justificativa == null || justificativa.isBlank()) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.DADOS_INVALIDOS,
+                    "Informe a justificativa.", Map.of("justificativa", "Informe a justificativa."));
+        }
+        return decidir(solicitacaoId, aprovacaoId, ator, justificativa.strip(), true);
+    }
+
+    private SolicitacaoResponse decidir(Long solicitacaoId, Long aprovacaoId, Usuario ator,
+            String justificativa, boolean recusa) {
+        Map<String, String> erros = new LinkedHashMap<>();
+        if (solicitacaoId == null || solicitacaoId <= 0) {
+            erros.put("solicitacaoId", "Informe um identificador positivo.");
+        }
+        if (aprovacaoId == null || aprovacaoId <= 0) {
+            erros.put("aprovacaoId", "Informe um identificador positivo.");
+        }
+        if (!erros.isEmpty()) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.DADOS_INVALIDOS, "Revise os campos informados.", erros);
+        }
+        recarregarAtor(ator);
+        Solicitacao solicitacao = solicitacoes.buscarPorIdParaAtualizacao(solicitacaoId)
+                .orElseThrow(() -> falhaDecisao(MotivoFalhaDecisaoAprovacao.SOLICITACAO_NAO_ENCONTRADA));
+        // O lock serializa decisões; refresh também cobre entidades já carregadas pelo chamador.
+        gerenciador.refresh(solicitacao, LockModeType.PESSIMISTIC_WRITE);
+        Usuario atorAtual = recarregarAtor(ator);
+        if (!RegrasDecisaoAprovacao.temAcesso(solicitacao, atorAtual)) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.ACAO_NAO_PERMITIDA);
+        }
+        Aprovacao aprovacao = aprovacoes.buscarPorIdESolicitacao(aprovacaoId, solicitacaoId)
+                .orElseThrow(() -> falhaDecisao(MotivoFalhaDecisaoAprovacao.APROVACAO_NAO_ENCONTRADA));
+        gerenciador.refresh(aprovacao);
+        RegrasDecisaoAprovacao.avaliar(solicitacao, aprovacao, atorAtual)
+                .ifPresent(motivo -> { throw falhaDecisao(motivo); });
+
+        Aprovacao proxima = !recusa && aprovacao.getEtapa() == EtapaAprovacao.GESTOR_AREA
+                ? new Aprovacao(solicitacao, EtapaAprovacao.GESTOR_RESPONSAVEL,
+                        gestorDaSegundaEtapa(solicitacao)) : null;
+        // Capturado somente depois do lock e das revalidações; uma leitura por decisão.
+        Instant instante = relogio.instant().truncatedTo(ChronoUnit.MICROS);
+        StatusSolicitacao estadoAnterior = solicitacao.getStatus();
+        if (recusa) {
+            aprovacao.recusar(justificativa, instante);
+            solicitacao.recusarEtapa(aprovacao.getEtapa());
+        } else {
+            aprovacao.aprovar(instante);
+            solicitacao.aprovarEtapa(aprovacao.getEtapa());
+        }
+        if (proxima != null) {
+            aprovacoes.save(proxima);
+        }
+        eventos.save(new EventoSolicitacao(solicitacao, atorAtual,
+                recusa ? TipoEventoSolicitacao.RECUSA : TipoEventoSolicitacao.APROVACAO,
+                estadoAnterior, solicitacao.getStatus(),
+                recusa ? justificativa : "Etapa " + aprovacao.getEtapa() + " aprovada.", instante));
+        // Não capturar falhas de persistência: a transação deve terminar com rollback.
+        solicitacoes.flush();
+        return mapeador.mapear(solicitacao, aprovacoes.buscarPorSolicitacao(solicitacaoId),
+                eventos.buscarPorSolicitacao(solicitacaoId), atorAtual);
+    }
+
+    private Usuario recarregarAtor(Usuario ator) {
+        if (ator == null || ator.getId() == null) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO);
+        }
+        Usuario atual = usuarios.findById(ator.getId())
+                .orElseThrow(() -> falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO));
+        gerenciador.refresh(atual);
+        if (!atual.isAtivo()) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.NAO_AUTENTICADO);
+        }
+        return atual;
+    }
+
+    private Usuario gestorDaSegundaEtapa(Solicitacao solicitacao) {
+        Setor origem = solicitacao.getSetorOrigem();
+        gerenciador.refresh(origem);
+        Usuario gestor = origem.getGestor();
+        if (gestor == null) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.GESTOR_DESIGNADO_INVALIDO);
+        }
+        gerenciador.refresh(gestor);
+        if (!gestor.isAtivo() || gestor.getPerfil() != PerfilUsuario.GESTOR
+                || !origem.getId().equals(gestor.getSetor().getId())) {
+            throw falhaDecisao(MotivoFalhaDecisaoAprovacao.GESTOR_DESIGNADO_INVALIDO);
+        }
+        return gestor;
+    }
+
+    private ExcecaoDecisaoAprovacao falhaDecisao(MotivoFalhaDecisaoAprovacao motivo) {
+        String mensagem = switch (motivo) {
+            case NAO_AUTENTICADO -> "Usuário interno ausente, inexistente ou inativo.";
+            case ACAO_NAO_PERMITIDA -> "Ação não permitida para este usuário.";
+            case SOLICITACAO_NAO_ENCONTRADA -> "Solicitação não encontrada.";
+            case APROVACAO_NAO_ENCONTRADA -> "Aprovação não encontrada para a solicitação.";
+            case ETAPA_JA_DECIDIDA -> "Etapa já decidida.";
+            case ESTADO_INCOMPATIVEL -> "O pedido não aguarda esta etapa.";
+            case GESTOR_DESIGNADO_INVALIDO -> "Gestor designado inválido.";
+            case DADOS_INVALIDOS -> "Revise os campos informados.";
+        };
+        return falhaDecisao(motivo, mensagem, Map.of());
+    }
+
+    private ExcecaoDecisaoAprovacao falhaDecisao(MotivoFalhaDecisaoAprovacao motivo,
+            String mensagem, Map<String, String> erros) {
+        return new ExcecaoDecisaoAprovacao(motivo, mensagem, erros);
     }
 
     private void validarEntrada(CriarSolicitacaoRequest entrada) {

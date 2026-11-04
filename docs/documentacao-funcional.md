@@ -5,10 +5,14 @@ implementação e migration V1 aplicada no PostgreSQL de integração. A valida�
 manual informada de `verify -Pintegration` concluiu 20 testes, sem falhas ou
 erros, com `BUILD SUCCESS`.
 
-Evolução atual: criação de solicitações implementada no service, com validação
-local manual informada de 57 testes, zero falhas, zero erros e `BUILD SUCCESS`.
-Controller, endpoint e integração com autenticação permanecem pendentes;
-veja o registro no [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-criação-de-solicitações-no-service).
+Evolução atual: criação de solicitações, aprovação e recusa de etapas
+implementadas no service, conforme o contrato v1.1. Validação manual informada
+pelo responsável: 77 testes, zero falhas, zero erros, zero ignorados e
+`BUILD SUCCESS`, sem nova execução de testes ou build para este registro.
+Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
+interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Cancelamento, envio,
+recebimento e consultas não foram implementados nesta entrega; veja o registro
+no [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-aprovação-e-recusa-de-etapas-no-service).
 
 ## Documentos
 
