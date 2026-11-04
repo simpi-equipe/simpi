@@ -36,6 +36,13 @@ O gestor da primeira etapa é o designado para o setor do solicitante. O da segu
 
 - Gestor designado pode recusar sua etapa pendente, com justificativa obrigatória. Solicitação passa para RECUSADA.
 - Somente o solicitante pode cancelar, com motivo obrigatório, enquanto aguarda uma aprovação ou está APROVADA e ainda não foi enviada.
+- O cancelamento exige solicitante ativo e acesso ao pedido pelas regras de
+  visibilidade aprovadas: setor atual participante como solicitante, origem
+  ou destino históricos, ou consulta global do ADMINISTRADOR. Mudar de setor
+  mantém o cancelamento possível se o acesso permanecer. Sem esse acesso,
+  retornar ACAO_NAO_PERMITIDA antes de revelar estado ou decisões. A exceção
+  de visibilidade administrativa não permite cancelar pedidos de outros
+  solicitantes; nenhum perfil substitui a autoria do pedido.
 - Não há cancelamento após o envio, reabertura ou reversão de estados finais no MVP.
 - RECUSADA, CANCELADA e CONCLUIDA são estados finais; pedidos nesses estados não bloqueiam nova solicitação do bem.
 - Recusa e cancelamento preservam o cadastro do bem e o histórico de decisões.

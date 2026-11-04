@@ -61,7 +61,7 @@ public class SolicitacaoMapper {
 
     private List<String> acoesDisponiveis(Solicitacao solicitacao, List<Aprovacao> aprovacoes, Usuario ator) {
         List<String> acoes = new ArrayList<>();
-        if (!RegrasDecisaoAprovacao.temAcesso(solicitacao, ator)) {
+        if (!RegrasVisibilidadeSolicitacao.temAcesso(solicitacao, ator)) {
             return acoes;
         }
         if (aprovacoes.stream().anyMatch(aprovacao ->
@@ -70,10 +70,7 @@ public class SolicitacaoMapper {
             acoes.add("RECUSAR");
         }
         var estado = solicitacao.getStatus();
-        boolean antesDoEnvio = estado == StatusSolicitacao.AGUARDANDO_GESTOR_AREA
-                || estado == StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL || estado == StatusSolicitacao.APROVADA;
-        if (antesDoEnvio && solicitacao.getEnviadaEm() == null
-                && solicitacao.getSolicitante().getId().equals(ator.getId())) {
+        if (RegrasCancelamentoSolicitacao.avaliar(solicitacao, ator).isEmpty()) {
             acoes.add("CANCELAR");
         }
         if (estado == StatusSolicitacao.APROVADA

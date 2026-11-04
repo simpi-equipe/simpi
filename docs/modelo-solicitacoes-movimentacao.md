@@ -235,3 +235,78 @@ Controllers, endpoints de criação/aprovação/recusa, integração com autenti
 e tradução HTTP de `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Cancelamento,
 envio, recebimento e consultas ficam fora desta entrega. Migrations, contratos,
 dependências e arquivos da autenticação não foram alterados.
+
+## Evolução: cancelamento de solicitações no service
+
+`SolicitacaoService.cancelar(solicitacaoId, motivo, ator)` recebe o ator pela
+integração interna confiável e retorna o mesmo `SolicitacaoResponse` completo.
+O motivo é obrigatório, rejeita texto vazio ou somente espaços, tabulações e
+quebras de linha e tem espaços externos removidos. A justificativa inicial
+da solicitação não é substituída pelo motivo do cancelamento.
+
+Definição funcional aprovada para esta entrega: somente o próprio solicitante
+ativo pode cancelar e deve manter acesso ao pedido pelas regras de
+visibilidade existentes. O setor atual pode coincidir com qualquer setor
+participante preservado no pedido (solicitante, origem ou destino); a consulta
+global do ADMINISTRADOR também é preservada. A mudança de setor, isoladamente,
+não impede o cancelamento. A perda de acesso produz `ACAO_NAO_PERMITIDA` antes
+de revelar estado ou decisões. Nenhum perfil concede cancelamento de pedidos
+alheios, e não há exigência de permanecer no setor solicitante original.
+
+`RegrasVisibilidadeSolicitacao` reúne a verificação anteriormente existente em
+`RegrasDecisaoAprovacao.temAcesso`, que continua delegando à mesma regra.
+`RegrasCancelamentoSolicitacao` compartilha os critérios de conta ativa,
+visibilidade, autoria e estado entre o service e `CANCELAR` em
+`acoesDisponiveis`, sem criar novas permissões por perfil.
+
+Após validar identificador e motivo, o service recarrega o ator, bloqueia a
+solicitação com `PESSIMISTIC_WRITE`, atualiza a entidade no contexto JPA e
+recarrega novamente o ator após eventual espera. Acesso e autoria precedem a
+verificação de estado. São canceláveis `AGUARDANDO_GESTOR_AREA`,
+`AGUARDANDO_GESTOR_RESPONSAVEL` e `APROVADA`, desde que não haja envio registrado.
+Estado incompatível, inclusive cancelamento repetido, produz
+`ESTADO_INCOMPATIVEL`, sem novo evento. Os motivos de falha usam os códigos
+já previstos no contrato, sem implementar tradução HTTP.
+
+O instante do servidor é capturado uma vez após o bloqueio e as validações,
+em UTC e com precisão de microssegundos. A alteração para `CANCELADA` e o evento
+`CANCELAMENTO` com ator, estados anterior/novo e motivo normalizado na
+`descricao` compartilham a mesma transação. Falhas de persistência encerram a
+operação com rollback integral, sem continuar consultando ou gravando. O bem,
+as referências históricas, os eventos anteriores e todas as aprovações são
+preservados; etapas pendentes não recebem decisões fictícias.
+As aprovações usadas na resposta completa também são atualizadas no contexto
+JPA após o `flush`, para refletir decisões confirmadas enquanto o cancelamento
+aguardava o lock, mesmo quando essas entidades já estavam carregadas.
+
+O cancelamento compartilha com aprovação e recusa o lock da solicitação e não
+adquire lock no bem. A criação existente bloqueia o bem antes de verificar
+pedido ativo; assim, não se acrescenta uma aquisição inversa solicitação ->
+bem. Após o commit, o estado `CANCELADA` libera a disponibilidade pelo índice
+parcial existente, permitindo novo pedido sem alteração cadastral do bem.
+
+Nas disputas, dois cancelamentos confirmam somente um evento. Cancelamento
+confirmado primeiro impede aprovação ou recusa posterior; recusa confirmada
+primeiro impede cancelamento. Aprovação confirmada primeiro pode ser seguida
+de cancelamento válido, pois seu estado resultante continua cancelável: nesse
+caso ambas as ações são preservadas em sequência, com suas decisões e eventos.
+
+`CancelamentoSolicitacaoServiceIT` e `ConcorrenciaCancelamentoSolicitacaoIT`
+foram escritos para sucesso nos estados permitidos, autoria e conta ativa,
+visibilidade por setores históricos e exceção administrativa, mudança para
+setor participante e perda de acesso, motivo inválido, estado, repetição,
+preservação de dados, resposta completa, captura do instante sob bloqueio,
+rollback e novo pedido após commit. Os cenários concorrentes usam conexões
+independentes, esperas limitadas e verificação de espera real pelo lock.
+
+Validação manual final informada pelo responsável para a entrega de
+cancelamento: **99 testes, zero falhas, zero erros, zero ignorados e
+`BUILD SUCCESS`**. O resultado é registrado conforme informado, sem repetir
+testes ou builds nesta revisão. O resultado anterior de 77 testes da entrega
+de aprovação e recusa permanece registrado na seção correspondente, assim
+como os resultados das demais entregas anteriores.
+
+Controllers, endpoints, integração com autenticação e tradução
+HTTP de `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Envio, recebimento e
+consultas continuam fora do escopo; migrations, contratos, dependências e
+arquivos de autenticação permanecem intactos.

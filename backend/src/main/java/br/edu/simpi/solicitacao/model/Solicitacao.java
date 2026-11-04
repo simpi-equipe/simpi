@@ -120,6 +120,18 @@ public class Solicitacao {
         return id;
     }
 
+    public boolean estaEmEstadoCancelavel() {
+        return enviadaEm == null && (status == StatusSolicitacao.AGUARDANDO_GESTOR_AREA
+                || status == StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL || status == StatusSolicitacao.APROVADA);
+    }
+
+    public void cancelar() {
+        if (!estaEmEstadoCancelavel()) {
+            throw new IllegalStateException("O pedido não pode ser cancelado neste estado.");
+        }
+        this.status = StatusSolicitacao.CANCELADA;
+    }
+
     public void aprovarEtapa(EtapaAprovacao etapa) {
         validarEtapaAguardada(etapa);
         this.status = etapa == EtapaAprovacao.GESTOR_AREA
