@@ -389,3 +389,100 @@ A limitação cadastral e a política de evolução descritas acima permanecem v
 Consultas, Controllers, endpoints, integração com autenticação e tradução HTTP de
 `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Migrations, contratos,
 dependências e arquivos da autenticação não foram alterados.
+
+## Evolução: consultas de cadastros e bens no service
+
+`ConsultaPatrimonialService` reúne seleção de setores, localizações e usuários,
+pesquisa paginada de bens e detalhe de bem. As operações são transacionais de
+leitura e recebem o ator pela integração interna confiável, recarregado pelo ID
+e validado como ativo. Não dependem de JWT, Controller ou endpoint. Qualquer
+perfil ativo pode consultar bens e cadastros de outros setores, conforme o contrato.
+
+Os DTOs e projeções pertencem à funcionalidade `consulta`, em `dto`, `service`,
+`repository` e `enums`. Os módulos e entidades anteriores não foram reorganizados.
+Setor/localização retornam ID, código e nome; usuário retorna ID, nome e setor
+resumido, sem e-mail, perfil, hash ou outros dados de autenticação. Seletores não
+têm paginação e ordenam por nome e ID. Setores/localizações devem estar ativos.
+
+Definições aprovadas: a seleção de usuários exige `setorId` e retorna usuários
+ativos desse setor mesmo quando ele está inativo. Setor inexistente produz
+`RECURSO_NAO_ENCONTRADO`; setor sem usuários ativos retorna lista vazia. Os
+filtros de bens aceitam setor e localização inativos existentes; referência
+inexistente é erro mesmo quando não haveria resultados. Essas permissões de
+consulta não flexibilizam as validações de criação de pedidos.
+
+A busca remove espaços externos e trata texto vazio como ausência; pesquisa
+parcialmente código, plaqueta ou descrição, sem distinguir caixa. `%` e `_`
+digitados são literais, assim como o caractere de escape `!`. Valores são
+vinculados como parâmetros. Setor, localização, busca e disponibilidade são
+combinados; não há filtro implícito que exclua bens inativos. O detalhe expõe
+as referências atuais mesmo quando inativas, sem reparar ou reativar cadastros.
+
+Disponibilidade é calculada na própria consulta: bem ativo e nenhum pedido em
+`AGUARDANDO_GESTOR_AREA`, `AGUARDANDO_GESTOR_RESPONSAVEL`, `APROVADA` ou
+`EM_TRANSITO`. O vínculo com pedidos ativos não recebe filtro de visibilidade.
+O índice único parcial existente garante no máximo um vínculo ativo por bem.
+Os joins dos cadastros retornam os campos projetados sem navegação LAZY por item;
+contagem e conteúdo compartilham o mesmo construtor de predicados.
+
+A lista retorna o formato paginado do contrato, ordenado por código e ID. O
+detalhe mantém os campos na raiz e acrescenta `solicitacaoEmAndamento`, somente
+com ID/número quando o ator puder consultar o pedido. Caso contrário é `null`,
+sem exposição desses dados por outro campo. A disponibilidade continua falsa
+para pedido oculto. A regra de visibilidade existente agora também aceita IDs
+históricos projetados; o método por entidade delega à mesma avaliação, preservando
+setores participantes, conta ativa e consulta global administrativa.
+
+Paginação: página padrão zero, tamanho padrão 20, limites 1 a 100. O deslocamento
+é calculado em `long`. Como [Query.setFirstResult recebe int](https://jakarta.ee/specifications/persistence/3.2/apidocs/jakarta.persistence/jakarta/persistence/Query.html#setFirstResult(int)),
+a consulta usa `LIMIT`/`OFFSET` SQL parametrizados e vincula o deslocamento como
+`Long`, sem conversão para `int`. Após contar, páginas além do fim retornam
+conteúdo vazio mantendo os totais, inclusive deslocamentos superiores ao limite
+de `int`. O cálculo de total de páginas usa divisão/resto para evitar overflow.
+
+Os testes `ConsultaCadastrosServiceIT` e `ConsultaBensServiceIT` foram escritos
+para elegibilidade, campos retornados, filtros combinados, busca literal, limites,
+ordenação, paginação e ausência de resultados, estados ativos/finais, bens e
+referências inativos, autenticação interna e preservação da regra de visibilidade.
+Há cenários de pedido oculto indisponível, mudança de setor/perfil persistidos,
+OFFSET SQL superior a `int` e rejeição de criação apesar da consulta permitida.
+Os testes de quantidade de consultas comparam poucos e muitos itens com contexto
+JPA limpo, caches de segundo nível e consultas desativados e deltas das estatísticas
+de SQL do Hibernate; não dependem de uma contagem fixa incidental ou de cache quente.
+
+Consultas não reservam bens nem substituem as validações sob bloqueio da criação.
+Disponibilidade, dados e totais são informativos no momento de suas consultas.
+No registro inicial desta entrega, compilação e execução dos novos testes ficaram
+pendentes de autorização; não foram executados Docker, Maven, testes ou builds
+naquela etapa. O resultado manual
+informado de 123 testes da entrega de envio e recebimento permanece no histórico,
+sem extensão desse resultado às consultas. Histórico de transferências e consultas
+de solicitações ficam para entregas posteriores, usando os pedidos como fonte de
+verdade. Controllers, endpoints, integração com autenticação e tradução HTTP de
+`GESTOR_DESIGNADO_INVALIDO` continuam pendentes. Migrations, contratos, dependências
+e arquivos da autenticação permanecem intactos.
+
+### Revisão final das consultas — 04/11/2026
+
+Validação manual final informada pelo responsável: **144 testes, zero falhas,
+zero erros, zero ignorados e `BUILD SUCCESS`**. Esse resultado encerra a pendência
+de compilação e execução registrada acima. Os resultados anteriores, incluindo
+os 123 testes de envio e recebimento, permanecem como histórico. Não foram
+repetidos testes ou builds durante a revisão final.
+
+A revisão do diff e dos 14 arquivos novos não identificou credenciais reais nem
+arquivos gerados na entrega. `git diff --check` e a verificação equivalente dos
+arquivos novos, por `git diff --no-index --check`, não apontaram erros de whitespace.
+
+O repository concreto de consultas, os predicados compartilhados e a projeção
+interna são proporcionais aos filtros, à disponibilidade e ao OFFSET em `long`.
+Os dois testes de quantidade de consultas verificam crescimento por item com
+contexto JPA limpo e caches desativados, sem impor um número fixo de comandos SQL.
+Não foram identificadas abstrações ou infraestrutura dispensáveis que exijam
+simplificação. O mapeamento posicional das 17 colunas exige cuidado ao alterar
+a projeção; isso é um ponto de manutenção, sem mudança proposta nesta entrega.
+
+Nenhuma implementação foi alterada nesta revisão. Permanecem pendentes histórico
+de transferências, consultas de solicitações, Controllers, endpoints, integração
+com autenticação e tradução HTTP de `GESTOR_DESIGNADO_INVALIDO`. A limitação
+cadastral aprovada permanece válida. Não foram feitos stage, commit ou push.

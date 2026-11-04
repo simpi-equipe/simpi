@@ -5,8 +5,14 @@ implementação e migration V1 aplicada no PostgreSQL de integração. A valida�
 manual informada de `verify -Pintegration` concluiu 20 testes, sem falhas ou
 erros, com `BUILD SUCCESS`.
 
-Evolução atual: criação, aprovação, recusa, cancelamento, envio e recebimento
-implementados no service. Envio e recebimento exigem ator ativo do setor
+Evolução atual: criação, aprovação, recusa, cancelamento, envio, recebimento e
+consultas de cadastros e bens implementados no service. As consultas de seleção
+elegem setores/localizações ativos e usuários ativos do setor informado,
+mesmo quando esse setor está inativo. Filtros de bens aceitam referências
+existentes inativas, sem flexibilizar a criação. Pedidos ocultos não são
+expostos e continuam bloqueando a disponibilidade do bem.
+
+Envio e recebimento exigem ator ativo do setor
 histórico correspondente e usam as referências preservadas no pedido, sem
 bloqueios por alterações ou inativações posteriores dessas referências.
 Somente o recebimento altera setor, localização e responsável do bem, sem
@@ -17,12 +23,16 @@ de disponibilizar manutenção cadastral.
 
 Validação manual final informada pelo responsável para a entrega de envio e
 recebimento: 123 testes, zero falhas, zero erros, zero ignorados e `BUILD SUCCESS`.
-Não foram repetidos testes ou builds nesta revisão; os resultados anteriores
-permanecem no histórico do modelo, assim como a limitação cadastral aprovada.
+Esse resultado permanece como histórico, assim como a limitação cadastral
+aprovada. Validação manual final informada pelo responsável para a entrega de
+consultas: 144 testes, zero falhas, zero erros, zero ignorados e `BUILD SUCCESS`.
+A pendência anterior de compilação e execução das consultas está encerrada
+pelo resultado informado. Não foram repetidos testes ou builds nesta revisão.
 Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
-interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Consultas não foram
-implementadas nesta entrega; veja o registro no
-[documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-envio-e-recebimento-no-service).
+interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Histórico de
+transferências e consultas de solicitações ficam para entregas posteriores;
+veja o registro no
+[documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-consultas-de-cadastros-e-bens-no-service).
 
 ## Documentos
 

@@ -13,6 +13,31 @@ Resumo operacional das decisões já registradas no [contrato da API v1.1](contr
 - Bem inativo não pode iniciar uma transferência. O responsável de destino precisa estar ativo e pertencer ao setor de destino.
 - Pelo menos setor, localização ou responsável de destino deve diferir da origem.
 
+## Consultas de cadastros e bens
+
+- Seletores de setores e localizações retornam somente ativos, sem paginação,
+  por nome e ID. Localizações são independentes do setor selecionado.
+- A seleção de usuários exige `setorId` existente e retorna os usuários ativos
+  desse setor, inclusive quando o setor está inativo. Consultar outro setor
+  é permitido; não há exclusão de perfis na seleção. Setor inexistente é erro;
+  setor sem usuários ativos retorna lista vazia.
+- Filtros de bens aceitam setor e localização inativos, desde que existam.
+  Isso não torna essas referências elegíveis para abrir pedidos: as validações
+  de criação permanecem obrigatórias e inalteradas.
+- A busca remove espaços externos; texto vazio equivale a ausência. Busca
+  parcialmente em código, plaqueta ou descrição, sem distinguir caixa;
+  `%` e `_` são caracteres literais. Todos os filtros são combinados.
+- Bens inativos continuam consultáveis, com `ativo = false` e indisponibilidade.
+  Disponibilidade exige bem ativo e ausência de pedido em andamento, mesmo que
+  o ator não tenha acesso a esse pedido. É informativa, sem reserva do bem.
+- No detalhe, `solicitacaoEmAndamento` contém somente ID e número se o ator
+  puder consultar o pedido pela regra existente de visibilidade; caso contrário
+  é `null`. A lista de bens não expõe dados do pedido. Um pedido oculto continua
+  bloqueando a disponibilidade e o filtro de disponíveis não pode revelá-lo.
+- Paginação começa em zero, com tamanho padrão 20 e limites 1 a 100; ordenação
+  por código e ID. Página além dos resultados retorna conteúdo vazio com os
+  totais da pesquisa, inclusive quando o deslocamento ultrapassa `int`.
+
 ## Relacionamentos principais
 
 ![DER conceitual simplificado](der-simplificado.png)
