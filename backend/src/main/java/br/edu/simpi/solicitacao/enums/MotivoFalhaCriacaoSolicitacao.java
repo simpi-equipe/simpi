@@ -1,0 +1,11 @@
+package br.edu.simpi.solicitacao.enums;
+
+public enum MotivoFalhaCriacaoSolicitacao {
+    DADOS_INVALIDOS,
+    SOLICITANTE_INVALIDO,
+    SOLICITANTE_INATIVO,
+    PERFIL_NAO_PERMITIDO,
+    REFERENCIA_NAO_ENCONTRADA,
+    BEM_COM_SOLICITACAO_EM_ANDAMENTO,
+    GESTOR_DESIGNADO_INVALIDO
+}
