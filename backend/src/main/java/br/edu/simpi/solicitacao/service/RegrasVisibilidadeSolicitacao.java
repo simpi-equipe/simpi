@@ -12,10 +12,19 @@ public final class RegrasVisibilidadeSolicitacao {
         if (ator == null || ator.getId() == null || !ator.isAtivo()) {
             return false;
         }
+        return temAcesso(ator, solicitacao.getSetorSolicitante().getId(),
+                solicitacao.getSetorOrigem().getId(), solicitacao.getSetorDestino().getId());
+    }
+
+    /** Mesma regra para consultas projetadas; os IDs são sempre os preservados no pedido. */
+    public static boolean temAcesso(Usuario ator, Long setorSolicitanteId, Long setorOrigemId, Long setorDestinoId) {
+        if (ator == null || ator.getId() == null || !ator.isAtivo()) {
+            return false;
+        }
         Long setorId = ator.getSetor().getId();
         return ator.getPerfil() == PerfilUsuario.ADMINISTRADOR
-                || setorId.equals(solicitacao.getSetorSolicitante().getId())
-                || setorId.equals(solicitacao.getSetorOrigem().getId())
-                || setorId.equals(solicitacao.getSetorDestino().getId());
+                || setorId.equals(setorSolicitanteId)
+                || setorId.equals(setorOrigemId)
+                || setorId.equals(setorDestinoId);
     }
 }
