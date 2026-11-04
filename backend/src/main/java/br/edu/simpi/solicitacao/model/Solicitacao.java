@@ -1,6 +1,7 @@
 package br.edu.simpi.solicitacao.model;
 
 import br.edu.simpi.solicitacao.enums.StatusSolicitacao;
+import br.edu.simpi.solicitacao.enums.EtapaAprovacao;
 
 import br.edu.simpi.bem.BemPatrimonial;
 import br.edu.simpi.localizacao.Localizacao;
@@ -117,6 +118,26 @@ public class Solicitacao {
 
     public Long getId() {
         return id;
+    }
+
+    public void aprovarEtapa(EtapaAprovacao etapa) {
+        validarEtapaAguardada(etapa);
+        this.status = etapa == EtapaAprovacao.GESTOR_AREA
+                ? StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL : StatusSolicitacao.APROVADA;
+    }
+
+    public void recusarEtapa(EtapaAprovacao etapa) {
+        validarEtapaAguardada(etapa);
+        this.status = StatusSolicitacao.RECUSADA;
+    }
+
+    private void validarEtapaAguardada(EtapaAprovacao etapa) {
+        Objects.requireNonNull(etapa, "Etapa obrigatória");
+        StatusSolicitacao esperado = etapa == EtapaAprovacao.GESTOR_AREA
+                ? StatusSolicitacao.AGUARDANDO_GESTOR_AREA : StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL;
+        if (status != esperado) {
+            throw new IllegalStateException("O pedido não aguarda esta etapa.");
+        }
     }
 
     public String getNumero() {

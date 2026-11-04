@@ -64,6 +64,28 @@ public class Aprovacao {
         return id;
     }
 
+    public void aprovar(Instant instante) {
+        validarPendente();
+        this.decididaEm = Objects.requireNonNull(instante, "Instante obrigatório");
+        this.decisao = DecisaoAprovacao.APROVADA;
+    }
+
+    public void recusar(String justificativa, Instant instante) {
+        validarPendente();
+        if (justificativa == null || justificativa.isBlank()) {
+            throw new IllegalArgumentException("Informe a justificativa da recusa.");
+        }
+        this.decididaEm = Objects.requireNonNull(instante, "Instante obrigatório");
+        this.justificativa = justificativa.strip();
+        this.decisao = DecisaoAprovacao.RECUSADA;
+    }
+
+    private void validarPendente() {
+        if (decisao != DecisaoAprovacao.PENDENTE) {
+            throw new IllegalStateException("Etapa já decidida.");
+        }
+    }
+
     public Solicitacao getSolicitacao() {
         return solicitacao;
     }
