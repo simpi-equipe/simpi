@@ -5,6 +5,11 @@ implementação e migration V1 aplicada no PostgreSQL de integração. A valida�
 manual informada de `verify -Pintegration` concluiu 20 testes, sem falhas ou
 erros, com `BUILD SUCCESS`.
 
+Evolução atual: criação de solicitações implementada no service, com validação
+local manual informada de 57 testes, zero falhas, zero erros e `BUILD SUCCESS`.
+Controller, endpoint e integração com autenticação permanecem pendentes;
+veja o registro no [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-criação-de-solicitações-no-service).
+
 ## Documentos
 
 | Documento | Finalidade |
@@ -30,7 +35,7 @@ Manter português do Brasil nos identificadores definidos pela equipe, preservan
 2. **Datas em UTC:** decisão aprovada para a V2: Instant e TIMESTAMP WITH TIME ZONE. A geração do número e a entidade compartilham criadaEm com precisão de microssegundos.
 3. **Setor e gestor:** decisão implementada na V1, descrita abaixo. O gestor é obrigatório, pertence ao setor gerenciado e possui perfil GESTOR; as duas últimas condições foram omitidas na consolidação e restauradas por confirmação do responsável.
 4. **Domínios fechados:** PerfilUsuario utiliza VARCHAR com CHECK e EnumType.STRING, conforme decisão abaixo. Os quatro enums da V2 seguem essa representação, com VARCHAR(40), sem enum nativo PostgreSQL.
-5. **Concorrência:** a V2 prepara índice único parcial por bem ativo e unicidade de aprovação por solicitação/etapa. Bloqueios transacionais, transições e prevenção de decisões/eventos repetidos permanecem responsabilidades dos futuros casos de uso; veja o documento do modelo.
+5. **Concorrência:** a V2 prepara índice único parcial por bem ativo e unicidade de aprovação por solicitação/etapa. A criação no service já bloqueia o bem e grava pedido, aprovação inicial e evento em uma única transação. Transições e prevenção de decisões/eventos repetidos nas demais ações permanecem pendentes; veja o documento do modelo.
 6. **Perfil administrador:** abertura de solicitações não definida. Consulta global não concede automaticamente permissões operacionais.
 
 Esses pontos distinguem lacunas técnicas de regras já aprovadas. Apresentar as escolhas para validação antes de implementar os objetos afetados. Não ampliar o MVP com CRUDs, integrações ou recursos não previstos.

@@ -145,3 +145,22 @@ conforme informado, sem nova execução de testes ou build para esta atualizaç�
 A validação corresponde à suíte executada nesta entrega. Implementação e testes
 dos futuros casos de uso, permissões e transições permanecem pendentes na frente
 do fluxo.
+
+## Evolução: criação de solicitações no service
+
+`SolicitacaoService.criar` implementa a abertura prevista no contrato v1.1,
+com validações em chamadas diretas, solicitante interno recarregado pelo ID,
+preservação da origem e do setor solicitante, número e instante definidos no
+servidor, aprovação inicial pendente e evento `CRIACAO`. O bloqueio do bem e
+a gravação do pedido, aprovação e evento compartilham a mesma transação.
+A resposta completa inclui `acoesDisponiveis`, sem executar essas ações.
+
+Validação local manual informada pelo responsável: `verify -Pintegration`
+concluiu 57 testes, zero falhas, zero erros e `BUILD SUCCESS`. O resultado
+inclui os testes de criação, regras, concorrência e rollback. Não houve nova
+execução de testes ou build para este registro.
+
+Controller, exposição de `POST /api/solicitacoes` e integração com autenticação
+permanecem pendentes. As demais ações do fluxo não foram implementadas nesta
+entrega. O motivo interno `GESTOR_DESIGNADO_INVALIDO` ainda não possui tradução
+HTTP definida.
