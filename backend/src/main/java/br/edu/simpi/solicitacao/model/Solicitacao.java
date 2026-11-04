@@ -120,6 +120,38 @@ public class Solicitacao {
         return id;
     }
 
+    public boolean estaEmEstadoDeEnvio() {
+        return status == StatusSolicitacao.APROVADA && enviadaEm == null && enviadaPor == null
+                && recebidaEm == null && recebidaPor == null;
+    }
+
+    public boolean estaEmEstadoDeRecebimento() {
+        return status == StatusSolicitacao.EM_TRANSITO && enviadaEm != null && enviadaPor != null
+                && recebidaEm == null && recebidaPor == null;
+    }
+
+    public void registrarEnvio(Usuario ator, Instant instante) {
+        if (!estaEmEstadoDeEnvio()) {
+            throw new IllegalStateException("O pedido não pode ser enviado neste estado.");
+        }
+        Objects.requireNonNull(ator, "Responsável pelo envio obrigatório");
+        Objects.requireNonNull(instante, "Instante do envio obrigatório");
+        this.enviadaPor = ator;
+        this.enviadaEm = instante;
+        this.status = StatusSolicitacao.EM_TRANSITO;
+    }
+
+    public void registrarRecebimento(Usuario ator, Instant instante) {
+        if (!estaEmEstadoDeRecebimento()) {
+            throw new IllegalStateException("O pedido não pode ser recebido neste estado.");
+        }
+        Objects.requireNonNull(ator, "Responsável pelo recebimento obrigatório");
+        Objects.requireNonNull(instante, "Instante do recebimento obrigatório");
+        this.recebidaPor = ator;
+        this.recebidaEm = instante;
+        this.status = StatusSolicitacao.CONCLUIDA;
+    }
+
     public boolean estaEmEstadoCancelavel() {
         return enviadaEm == null && (status == StatusSolicitacao.AGUARDANDO_GESTOR_AREA
                 || status == StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL || status == StatusSolicitacao.APROVADA);

@@ -8,7 +8,6 @@ import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.OperacaoResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.ReferenciaResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.ReferenciasResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.SolicitanteResponse;
-import br.edu.simpi.solicitacao.enums.StatusSolicitacao;
 import br.edu.simpi.solicitacao.model.Aprovacao;
 import br.edu.simpi.solicitacao.model.EventoSolicitacao;
 import br.edu.simpi.solicitacao.model.Solicitacao;
@@ -69,16 +68,13 @@ public class SolicitacaoMapper {
             acoes.add("APROVAR");
             acoes.add("RECUSAR");
         }
-        var estado = solicitacao.getStatus();
         if (RegrasCancelamentoSolicitacao.avaliar(solicitacao, ator).isEmpty()) {
             acoes.add("CANCELAR");
         }
-        if (estado == StatusSolicitacao.APROVADA
-                && solicitacao.getSetorOrigem().getId().equals(ator.getSetor().getId())) {
+        if (RegrasExecucaoSolicitacao.avaliarEnvio(solicitacao, ator).isEmpty()) {
             acoes.add("ENVIAR");
         }
-        if (estado == StatusSolicitacao.EM_TRANSITO
-                && solicitacao.getSetorDestino().getId().equals(ator.getSetor().getId())) {
+        if (RegrasExecucaoSolicitacao.avaliarRecebimento(solicitacao, ator).isEmpty()) {
             acoes.add("RECEBER");
         }
         return acoes;
