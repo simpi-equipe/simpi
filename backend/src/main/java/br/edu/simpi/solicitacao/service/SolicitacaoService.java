@@ -12,6 +12,7 @@ import br.edu.simpi.solicitacao.enums.EtapaAprovacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaCriacaoSolicitacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaDecisaoAprovacao;
 import br.edu.simpi.solicitacao.enums.MotivoFalhaCancelamentoSolicitacao;
+import br.edu.simpi.solicitacao.enums.MotivoFalhaExecucaoSolicitacao;
 import br.edu.simpi.solicitacao.enums.StatusSolicitacao;
 import br.edu.simpi.solicitacao.enums.TipoEventoSolicitacao;
 import br.edu.simpi.solicitacao.model.Aprovacao;
@@ -187,6 +188,89 @@ public class SolicitacaoService {
         etapas.forEach(gerenciador::refresh);
         return mapeador.mapear(solicitacao, etapas,
                 eventos.buscarPorSolicitacao(solicitacaoId), atorAtual);
+    }
+
+    /** O ator vem da integração interna confiável; o envio não altera o cadastro do bem. */
+    @Transactional
+    public SolicitacaoResponse enviar(Long solicitacaoId, Usuario ator) {
+        validarIdExecucao(solicitacaoId);
+        recarregarAtorExecucao(ator);
+        Solicitacao solicitacao = solicitacoes.buscarPorIdParaAtualizacao(solicitacaoId)
+                .orElseThrow(() -> falhaExecucao(MotivoFalhaExecucaoSolicitacao.SOLICITACAO_NAO_ENCONTRADA));
+        gerenciador.refresh(solicitacao, LockModeType.PESSIMISTIC_WRITE);
+        Usuario atorAtual = recarregarAtorExecucao(ator);
+        RegrasExecucaoSolicitacao.avaliarEnvio(solicitacao, atorAtual)
+                .ifPresent(impedimento -> { throw falhaExecucao(impedimento); });
+        Instant instante = relogio.instant().truncatedTo(ChronoUnit.MICROS);
+        StatusSolicitacao anterior = solicitacao.getStatus();
+        solicitacao.registrarEnvio(atorAtual, instante);
+        eventos.save(new EventoSolicitacao(solicitacao, atorAtual, TipoEventoSolicitacao.ENVIO,
+                anterior, solicitacao.getStatus(), "Envio do bem registrado.", instante));
+        return respostaAposExecucao(solicitacao, atorAtual);
+    }
+
+    /** Aplica exatamente o destino preservado, mesmo após alterações cadastrais externas. */
+    @Transactional
+    public SolicitacaoResponse receber(Long solicitacaoId, Usuario ator) {
+        validarIdExecucao(solicitacaoId);
+        Usuario atorInicial = recarregarAtorExecucao(ator);
+        Solicitacao referencia = solicitacoes.findById(solicitacaoId)
+                .orElseThrow(() -> falhaExecucao(MotivoFalhaExecucaoSolicitacao.SOLICITACAO_NAO_ENCONTRADA));
+        RegrasExecucaoSolicitacao.avaliarPermissaoRecebimento(referencia, atorInicial)
+                .ifPresent(impedimento -> { throw falhaExecucao(impedimento); });
+
+        // Ordem global: bem -> solicitação. A leitura preliminar não autoriza a transição.
+        BemPatrimonial bem = bens.buscarPorIdParaAtualizacao(referencia.getBem().getId())
+                .orElseThrow(() -> new IllegalStateException("Bem da solicitação não encontrado."));
+        Solicitacao solicitacao = solicitacoes.buscarPorIdParaAtualizacao(solicitacaoId)
+                .orElseThrow(() -> falhaExecucao(MotivoFalhaExecucaoSolicitacao.SOLICITACAO_NAO_ENCONTRADA));
+        gerenciador.refresh(bem, LockModeType.PESSIMISTIC_WRITE);
+        gerenciador.refresh(solicitacao, LockModeType.PESSIMISTIC_WRITE);
+        Usuario atorAtual = recarregarAtorExecucao(ator);
+        RegrasExecucaoSolicitacao.avaliarRecebimento(solicitacao, atorAtual)
+                .ifPresent(impedimento -> { throw falhaExecucao(impedimento); });
+        if (!bem.getId().equals(solicitacao.getBem().getId())) {
+            throw new IllegalStateException("Referência histórica do bem foi alterada.");
+        }
+        Instant instante = relogio.instant().truncatedTo(ChronoUnit.MICROS);
+        StatusSolicitacao anterior = solicitacao.getStatus();
+        bem.transferirPara(solicitacao.getSetorDestino(), solicitacao.getLocalizacaoDestino(),
+                solicitacao.getResponsavelDestino());
+        solicitacao.registrarRecebimento(atorAtual, instante);
+        eventos.save(new EventoSolicitacao(solicitacao, atorAtual, TipoEventoSolicitacao.RECEBIMENTO,
+                anterior, solicitacao.getStatus(), "Recebimento do bem confirmado.", instante));
+        return respostaAposExecucao(solicitacao, atorAtual);
+    }
+
+    private SolicitacaoResponse respostaAposExecucao(Solicitacao solicitacao, Usuario ator) {
+        // Qualquer falha encerra a operação com rollback, sem consultas posteriores.
+        solicitacoes.flush();
+        List<Aprovacao> etapas = aprovacoes.buscarPorSolicitacao(solicitacao.getId());
+        etapas.forEach(gerenciador::refresh);
+        return mapeador.mapear(solicitacao, etapas, eventos.buscarPorSolicitacao(solicitacao.getId()), ator);
+    }
+
+    private void validarIdExecucao(Long solicitacaoId) {
+        if (solicitacaoId == null || solicitacaoId <= 0) {
+            throw new ExcecaoExecucaoSolicitacao(MotivoFalhaExecucaoSolicitacao.DADOS_INVALIDOS,
+                    "Revise os campos informados.", Map.of("solicitacaoId", "Informe um identificador positivo."));
+        }
+    }
+
+    private Usuario recarregarAtorExecucao(Usuario ator) {
+        return recarregarUsuarioAtivo(ator)
+                .orElseThrow(() -> falhaExecucao(MotivoFalhaExecucaoSolicitacao.NAO_AUTENTICADO));
+    }
+
+    private ExcecaoExecucaoSolicitacao falhaExecucao(MotivoFalhaExecucaoSolicitacao motivo) {
+        String mensagem = switch (motivo) {
+            case DADOS_INVALIDOS -> "Revise os campos informados.";
+            case NAO_AUTENTICADO -> "Usuário interno ausente, inexistente ou inativo.";
+            case ACAO_NAO_PERMITIDA -> "Ação não permitida para este usuário.";
+            case SOLICITACAO_NAO_ENCONTRADA -> "Solicitação não encontrada.";
+            case ESTADO_INCOMPATIVEL -> "Ação incompatível com o estado da solicitação.";
+        };
+        return new ExcecaoExecucaoSolicitacao(motivo, mensagem, Map.of());
     }
 
     private Usuario recarregarAtorCancelamento(Usuario ator) {

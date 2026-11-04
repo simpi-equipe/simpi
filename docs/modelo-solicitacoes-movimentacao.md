@@ -310,3 +310,82 @@ Controllers, endpoints, integração com autenticação e tradução
 HTTP de `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Envio, recebimento e
 consultas continuam fora do escopo; migrations, contratos, dependências e
 arquivos de autenticação permanecem intactos.
+
+## Evolução: envio e recebimento no service
+
+`SolicitacaoService.enviar(solicitacaoId, ator)` e `receber(solicitacaoId, ator)`
+recebem o usuário pela integração interna confiável e retornam o DTO completo
+existente. Não há corpo de entrada, Controller, endpoint ou autenticação nesta
+entrega. A conta do ator é recarregada e deve estar ativa. Visibilidade e setor
+atual são verificados antes de expor estado, datas ou decisões; qualquer perfil
+pode executar se pertencer ao setor histórico exigido. A consulta global do
+ADMINISTRADOR não dispensa o vínculo com o setor operacional correspondente.
+
+O envio exige `APROVADA`, sem envio anterior. Registra `enviadaPor` e
+`enviadaEm`, muda para `EM_TRANSITO` e acrescenta evento `ENVIO`. Não altera o
+cadastro do bem. O recebimento exige `EM_TRANSITO` e envio registrado, sem
+recebimento anterior. Registra `recebidaPor` e `recebidaEm`, aplica ao bem as
+três referências de destino preservadas, muda para `CONCLUIDA` e acrescenta
+evento `RECEBIMENTO`. O recebedor pode ser diferente do responsável de destino.
+
+Definição funcional aprovada para o protótipo: alterações ou inativações
+posteriores do bem, setor, localização ou responsável não acrescentam bloqueios
+ao envio ou recebimento. Mesmo que o cadastro atual do bem divirja da origem
+histórica ou o responsável tenha mudado de setor, aplicar exatamente os IDs
+de setor, localização e responsável de destino registrados no pedido. Não
+substituir o responsável pelo recebedor, reativar registros ou alterar código,
+plaqueta, descrição, situação ativa ou outros atributos do bem. A exigência de
+ator ativo do setor histórico continua válida, mesmo quando ele também for
+uma das referências do pedido.
+
+Limitação expressamente aceita: alterações cadastrais externas durante o fluxo
+podem produzir uma atribuição incompatível com a situação atual do responsável.
+A política de revalidação e correção desses pedidos fica para evolução
+posterior, antes de disponibilizar manutenção cadastral.
+
+O envio bloqueia a solicitação com `PESSIMISTIC_WRITE`. O recebimento faz uma
+leitura preliminar para localizar o bem e verificar a permissão, sem concluir
+nada sobre o estado; adquire os locks na ordem **bem -> solicitação**, compatível
+com a criação. Ambos os registros são atualizados no contexto JPA após os locks,
+e o ator é recarregado novamente após eventual espera. Aprovação, recusa,
+cancelamento e envio bloqueiam somente a solicitação e não adquirem depois um
+lock no bem. Nenhum caso novo introduz a ordem inversa solicitação -> bem.
+
+Cada ação captura uma única vez o instante do servidor depois dos bloqueios e
+validações, em UTC e com precisão de microssegundos. Estado, ator, data e evento
+compartilham a mesma transação; no recebimento, a atualização do bem também faz
+parte dela. Falhas de persistência são propagadas imediatamente para rollback,
+sem continuar consultando ou gravando. Após `flush`, as aprovações são atualizadas
+para montar a resposta completa mesmo se houve decisão concorrente durante a espera.
+
+`RegrasExecucaoSolicitacao` compartilha autorização e estado entre as operações
+e as ações `ENVIAR`/`RECEBER` do mapper, reutilizando a visibilidade existente.
+Repetições e estados incompatíveis produzem `ESTADO_INCOMPATIVEL` sem novo evento
+ou sobrescrita de atores e datas. Não há códigos públicos adicionais, cache de
+respostas ou tradução HTTP implementada nesta entrega.
+
+Os testes `EnvioRecebimentoSolicitacaoServiceIT` e
+`ConcorrenciaEnvioRecebimentoSolicitacaoIT` foram escritos para sucesso,
+permissões atuais, revalidação após espera, repetições, estados inválidos,
+relógio sob bloqueio, política cadastral aprovada, preservação de atributos,
+referências e decisões, e rollback do conjunto. As disputas cobrem envio contra
+cancelamento, envio seguido de recebimento, repetição das ações, aprovação
+seguida de envio, recebimento contra criação e mudanças externas durante a espera.
+
+Após recebimento confirmado, o índice parcial libera novo pedido, cuja origem
+é copiada do cadastro atualizado do bem. O futuro histórico de transferências
+continua derivado exclusivamente das solicitações `CONCLUIDAS`, com suas
+referências preservadas e registro de recebimento. Uma transferência posterior
+não reescreve o pedido anterior. Não há outra tabela ou coleção de demonstração
+como fonte de verdade nem implementação de consultas nesta entrega.
+
+Validação manual final informada pelo responsável para a entrega de envio e
+recebimento: **123 testes, zero falhas, zero erros, zero ignorados e
+`BUILD SUCCESS`**. O resultado é registrado conforme informado, sem repetir
+testes ou builds nesta revisão. Os resultados anteriores, incluindo os 99
+testes da entrega de cancelamento, permanecem nas seções correspondentes.
+A limitação cadastral e a política de evolução descritas acima permanecem vigentes.
+
+Consultas, Controllers, endpoints, integração com autenticação e tradução HTTP de
+`GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Migrations, contratos,
+dependências e arquivos da autenticação não foram alterados.

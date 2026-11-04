@@ -54,6 +54,17 @@ O gestor da primeira etapa é o designado para o setor do solicitante. O da segu
 - Criar pedido, aprovação inicial e evento é uma única transação.
 - Cada ação deve revalidar usuário, permissão, estado e disponibilidade durante sua execução.
 - O cadastro atual do bem só muda no recebimento. Atualizar o bem, concluir o pedido e registrar o evento ocorre na mesma transação.
+- Política aprovada para envio e recebimento no protótipo: usar os setores
+  históricos para autorizar o ator ativo e aplicar exatamente setor, localização
+  e responsável de destino registrados no pedido. Alterações ou inativações
+  posteriores do bem ou dessas referências não bloqueiam as operações.
+  O recebedor não substitui o responsável de destino; não reativar cadastros
+  nem modificar outros atributos do bem. A conta do ator continua exigindo
+  situação ativa, inclusive quando ele também é uma referência do pedido.
+- Limitação aceita: alterações cadastrais externas durante o fluxo podem
+  produzir uma atribuição incompatível com a situação atual do responsável.
+  A política de revalidação e correção desses pedidos fica para evolução
+  posterior, antes de disponibilizar manutenção cadastral.
 - Eventos são acrescentados, sem edição ou exclusão pela aplicação.
 - Histórico de transferências deriva dos pedidos concluídos e de suas referências preservadas; não do cadastro atual do bem.
 - Nenhum clique repetido ou requisição concorrente pode duplicar eventos, criar dois pedidos ativos ou decidir a próxima etapa involuntariamente.

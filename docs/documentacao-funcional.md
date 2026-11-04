@@ -5,17 +5,24 @@ implementação e migration V1 aplicada no PostgreSQL de integração. A valida�
 manual informada de `verify -Pintegration` concluiu 20 testes, sem falhas ou
 erros, com `BUILD SUCCESS`.
 
-Evolução atual: criação de solicitações, aprovação e recusa de etapas e
-cancelamento implementados no service. O cancelamento exige solicitante ativo
-com acesso ao pedido pelas regras de visibilidade aprovadas; mudança de setor
-não impede a ação se o acesso permanecer. Validação manual final informada
-pelo responsável para a entrega de cancelamento: 99 testes, zero falhas,
-zero erros, zero ignorados e `BUILD SUCCESS`. Não foram repetidos testes ou
-builds nesta revisão; os resultados anteriores permanecem no histórico do modelo.
+Evolução atual: criação, aprovação, recusa, cancelamento, envio e recebimento
+implementados no service. Envio e recebimento exigem ator ativo do setor
+histórico correspondente e usam as referências preservadas no pedido, sem
+bloqueios por alterações ou inativações posteriores dessas referências.
+Somente o recebimento altera setor, localização e responsável do bem, sem
+reativá-lo ou mudar seus demais atributos. Alterações cadastrais externas
+podem produzir atribuição incompatível com a situação atual do responsável;
+a política de revalidação e correção fica para evolução posterior, antes
+de disponibilizar manutenção cadastral.
+
+Validação manual final informada pelo responsável para a entrega de envio e
+recebimento: 123 testes, zero falhas, zero erros, zero ignorados e `BUILD SUCCESS`.
+Não foram repetidos testes ou builds nesta revisão; os resultados anteriores
+permanecem no histórico do modelo, assim como a limitação cadastral aprovada.
 Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
-interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Envio, recebimento e
-consultas não foram implementados nesta entrega; veja o registro no
-[documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-cancelamento-de-solicitações-no-service).
+interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Consultas não foram
+implementadas nesta entrega; veja o registro no
+[documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-envio-e-recebimento-no-service).
 
 ## Documentos
 

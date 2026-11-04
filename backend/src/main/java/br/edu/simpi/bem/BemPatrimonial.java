@@ -61,6 +61,16 @@ public class BemPatrimonial {
         this.responsavel = Objects.requireNonNull(responsavel, "Campo obrigatório: responsavel");
     }
 
+    /** Aplica somente as referências do destino; não reativa nem altera outros atributos. */
+    public void transferirPara(Setor setor, Localizacao localizacao, Usuario responsavel) {
+        Objects.requireNonNull(setor, "Setor de destino obrigatório");
+        Objects.requireNonNull(localizacao, "Localização de destino obrigatória");
+        Objects.requireNonNull(responsavel, "Responsável de destino obrigatório");
+        this.setor = setor;
+        this.localizacao = localizacao;
+        this.responsavel = responsavel;
+    }
+
     public Long getId() {
         return id;
     }
