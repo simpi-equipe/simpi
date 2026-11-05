@@ -290,6 +290,8 @@ Origem e destino são os dados preservados no pedido. Uma transferência posteri
 
 O frontend deve indicar que o histórico corresponde às transferências disponíveis para consulta quando houver restrição de acesso. 200 com conteudo=[] se não houver transferências visíveis; 404 se o bem não existir.
 
+Bens inativos também possuem histórico consultável, com as mesmas regras de visibilidade. Página além do fim retorna conteudo=[] mantendo totalElementos e totalPaginas dos pedidos visíveis. Bem inexistente retorna RECURSO_NAO_ENCONTRADO.
+
 
 ---
 
