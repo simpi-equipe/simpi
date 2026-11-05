@@ -305,7 +305,7 @@ Filtros opcionais: busca (número do pedido ou código do bem, parcial e sem dis
 | --- | --- |
 | DA_MINHA_AREA | Padrão. Setor do usuário participa como solicitante, origem ou destino. |
 | CRIADAS_POR_MIM | Usuário autenticado é o solicitante. |
-| AGUARDANDO_MINHA_APROVACAO | Exclusiva de gestor: etapa pendente designada ao usuário e pedido aguardando essa etapa. |
+| AGUARDANDO_MINHA_APROVACAO | Exclusiva de usuário ativo com perfil GESTOR: etapa pendente designada ao usuário, pedido aguardando essa etapa e pertencimento atual ao setor da etapa (solicitante para GESTOR_AREA; origem para GESTOR_RESPONSAVEL), conforme as regras de aprovação. Não altera o aprovador registrado nem reatribui etapas; a exclusão dessa fila não impede consulta por outras visões quando houver acesso. |
 | ENVIOS_E_RECEBIMENTOS | Fila operacional: APROVADA com origem no setor do usuário, ou EM_TRANSITO com destino nesse setor. |
 | TODAS | Exclusiva de administrador: pedidos de todas as áreas. |
 

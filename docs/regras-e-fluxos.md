@@ -38,6 +38,16 @@ Resumo operacional das decisões já registradas no [contrato da API v1.1](contr
   por código e ID. Página além dos resultados retorna conteúdo vazio com os
   totais da pesquisa, inclusive quando o deslocamento ultrapassa `int`.
 
+## Fila de aprovação
+
+A visão `AGUARDANDO_MINHA_APROVACAO` inclui somente etapas efetivamente
+decidíveis pelo ator: conta ativa, perfil GESTOR, aprovador registrado igual
+ao usuário, decisão pendente, estado correspondente e setor atual igual ao
+setor da etapa (solicitante em GESTOR_AREA; origem em GESTOR_RESPONSAVEL).
+Mudar para outro setor participante mantém a consulta quando houver acesso,
+mas exclui o pedido dessa fila e impede APROVAR/RECUSAR. O aprovador registrado
+é preservado, sem reatribuição de etapas.
+
 ## Relacionamentos principais
 
 ![DER conceitual simplificado](der-simplificado.png)

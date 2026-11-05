@@ -30,9 +30,25 @@ A pendência anterior de compilação e execução das consultas está encerrada
 pelo resultado informado. Não foram repetidos testes ou builds nesta revisão.
 Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
 interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Histórico de
-transferências e consultas de solicitações ficam para entregas posteriores;
+transferências fica para entrega posterior;
 veja o registro no
 [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-consultas-de-cadastros-e-bens-no-service).
+
+Consultas de solicitações implementadas no service: listagem com filtros,
+visões e paginação, e detalhe completo pelo mapper existente. O ator é
+recarregado pela identidade interna confiável, sem JWT. A fila
+`AGUARDANDO_MINHA_APROVACAO` exige também pertencimento atual ao setor da etapa,
+sem reatribuir o aprovador registrado; perder essa elegibilidade não impede
+consultar o pedido por outras visões quando houver acesso.
+
+Validação manual final informada pelo responsável para a entrega de consultas
+de solicitações: 157 testes, zero falhas, zero erros, zero ignorados e
+`BUILD SUCCESS`, após a correção da preparação circular de setor e gestor no
+teste. A correção adia somente `fk_setor_gestor` durante as cargas adicionais
+e restaura a validação imediata na mesma transação, preservando as asserções
+e o rollback. Esse resultado encerra a pendência de compilação e execução
+desta entrega; os registros históricos acima permanecem preservados. Não
+foram repetidos testes ou builds nesta revisão final.
 
 ## Documentos
 

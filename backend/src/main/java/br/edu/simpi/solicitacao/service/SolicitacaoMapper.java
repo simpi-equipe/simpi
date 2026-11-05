@@ -1,5 +1,7 @@
 package br.edu.simpi.solicitacao.service;
 
+import br.edu.simpi.solicitacao.dto.ResumoSolicitacaoResponse;
+import br.edu.simpi.solicitacao.dto.ResumoSolicitacaoResponse.BemResumoResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.AprovacaoResponse;
 import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.BemResponse;
@@ -11,6 +13,7 @@ import br.edu.simpi.solicitacao.dto.SolicitacaoResponse.SolicitanteResponse;
 import br.edu.simpi.solicitacao.model.Aprovacao;
 import br.edu.simpi.solicitacao.model.EventoSolicitacao;
 import br.edu.simpi.solicitacao.model.Solicitacao;
+import br.edu.simpi.solicitacao.repository.ConsultaSolicitacaoRepository.RegistroSolicitacao;
 import br.edu.simpi.usuario.Usuario;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,6 +23,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SolicitacaoMapper {
+    public ResumoSolicitacaoResponse mapearResumo(RegistroSolicitacao registro) {
+        return new ResumoSolicitacaoResponse(registro.id(), registro.numero(),
+                registro.criadaEm(), registro.status(),
+                new BemResumoResponse(registro.bemId(), registro.bemCodigo(), registro.bemDescricao()),
+                new SolicitanteResponse(registro.solicitanteId(), registro.solicitanteNome(),
+                        new ReferenciaResponse(registro.setorSolicitanteId(), registro.setorSolicitanteNome())),
+                new ReferenciaResponse(registro.setorOrigemId(), registro.setorOrigemNome()),
+                new ReferenciaResponse(registro.setorDestinoId(), registro.setorDestinoNome()));
+    }
+
     /** Resposta da abertura; não executa as ações anunciadas. */
     public SolicitacaoResponse mapearCriacao(Solicitacao solicitacao, Aprovacao aprovacao,
             EventoSolicitacao evento, Usuario solicitante) {
