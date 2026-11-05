@@ -1,13 +1,17 @@
 package br.edu.simpi.consulta.service;
 
+import br.edu.simpi.bem.BemPatrimonialRepository;
 import br.edu.simpi.consulta.dto.BemPatrimonialResponse;
 import br.edu.simpi.consulta.dto.DetalheBemPatrimonialResponse;
 import br.edu.simpi.consulta.dto.LocalizacaoSelecaoResponse;
 import br.edu.simpi.consulta.dto.PaginaBensResponse;
+import br.edu.simpi.consulta.dto.PaginaTransferenciasBemResponse;
 import br.edu.simpi.consulta.dto.PesquisarBensRequest;
 import br.edu.simpi.consulta.dto.SetorSelecaoResponse;
+import br.edu.simpi.consulta.dto.TransferenciaBemResponse;
 import br.edu.simpi.consulta.dto.UsuarioSelecaoResponse;
 import br.edu.simpi.consulta.repository.ConsultaBemRepository;
+import br.edu.simpi.consulta.repository.ConsultaTransferenciaRepository;
 import br.edu.simpi.localizacao.LocalizacaoRepository;
 import br.edu.simpi.setor.SetorRepository;
 import br.edu.simpi.usuario.Usuario;
@@ -28,16 +32,21 @@ public class ConsultaPatrimonialService {
     private final LocalizacaoRepository localizacoes;
     private final UsuarioRepository usuarios;
     private final ConsultaBemRepository bens;
+    private final BemPatrimonialRepository bensPatrimoniais;
+    private final ConsultaTransferenciaRepository transferencias;
     private final ConsultaPatrimonialMapper mapeador;
     private final EntityManager gerenciador;
 
     public ConsultaPatrimonialService(SetorRepository setores, LocalizacaoRepository localizacoes,
             UsuarioRepository usuarios, ConsultaBemRepository bens,
+            BemPatrimonialRepository bensPatrimoniais, ConsultaTransferenciaRepository transferencias,
             ConsultaPatrimonialMapper mapeador, EntityManager gerenciador) {
         this.setores = setores;
         this.localizacoes = localizacoes;
         this.usuarios = usuarios;
         this.bens = bens;
+        this.bensPatrimoniais = bensPatrimoniais;
+        this.transferencias = transferencias;
         this.mapeador = mapeador;
         this.gerenciador = gerenciador;
     }
@@ -83,6 +92,35 @@ public class ConsultaPatrimonialService {
         validarId(bemId, "bemId");
         var registro = bens.detalhar(bemId).orElseThrow(() -> recursoAusente("bemId"));
         return mapeador.mapearDetalhe(registro, atual);
+    }
+
+    public PaginaTransferenciasBemResponse listarTransferencias(Long bemId, Integer pagina,
+            Integer tamanho, Usuario ator) {
+        Usuario atual = recarregarAtor(ator);
+        validarId(bemId, "bemId");
+        int paginaAtual = pagina == null ? 0 : pagina;
+        int tamanhoAtual = tamanho == null ? 20 : tamanho;
+        Map<String, String> erros = new LinkedHashMap<>();
+        if (paginaAtual < 0) {
+            erros.put("pagina", "Informe uma página a partir de zero.");
+        }
+        if (tamanhoAtual < 1 || tamanhoAtual > 100) {
+            erros.put("tamanho", "Informe um tamanho entre 1 e 100.");
+        }
+        if (!erros.isEmpty()) {
+            throw new ExcecaoConsultaPatrimonial(DADOS_INVALIDOS, "Revise os campos informados.", erros);
+        }
+        // Existência independe da atividade do bem e da visibilidade dos pedidos.
+        if (!bensPatrimoniais.existsById(bemId)) {
+            throw recursoAusente("bemId");
+        }
+        long total = transferencias.contar(bemId, atual);
+        long deslocamento = (long) paginaAtual * tamanhoAtual;
+        long totalPaginas = total / tamanhoAtual + (total % tamanhoAtual == 0 ? 0 : 1);
+        List<TransferenciaBemResponse> conteudo = deslocamento >= total ? List.of()
+                : transferencias.listar(bemId, atual, tamanhoAtual, deslocamento).stream()
+                        .map(mapeador::mapearTransferencia).toList();
+        return new PaginaTransferenciasBemResponse(conteudo, paginaAtual, tamanhoAtual, total, totalPaginas);
     }
 
     private PesquisarBensRequest normalizarFiltros(PesquisarBensRequest filtros) {

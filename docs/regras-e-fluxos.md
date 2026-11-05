@@ -102,6 +102,11 @@ O gestor da primeira etapa é o designado para o setor do solicitante. O da segu
   posterior, antes de disponibilizar manutenção cadastral.
 - Eventos são acrescentados, sem edição ou exclusão pela aplicação.
 - Histórico de transferências deriva dos pedidos concluídos e de suas referências preservadas; não do cadastro atual do bem.
+- O histórico de um bem, inclusive inativo, aplica a visibilidade dos pedidos
+  antes da contagem e paginação. Ordena por recebimento e ID da solicitação,
+  ambos decrescentes. Bem inexistente retorna RECURSO_NAO_ENCONTRADO; sem
+  transferências visíveis retorna página vazia. Página além do fim mantém os
+  totais visíveis. Nomes podem refletir os cadastros atuais, sem snapshots.
 - Nenhum clique repetido ou requisição concorrente pode duplicar eventos, criar dois pedidos ativos ou decidir a próxima etapa involuntariamente.
 - Aprovar e recusar identificam solicitacaoId e aprovacaoId. A mesma aprovação repetida não decide outra etapa.
 - Não há Idempotency-Key obrigatório nem cache de respostas nesta versão. Em perda de resposta, consultar o estado atual antes de tentar novamente.

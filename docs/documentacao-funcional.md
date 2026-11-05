@@ -29,9 +29,8 @@ consultas: 144 testes, zero falhas, zero erros, zero ignorados e `BUILD SUCCESS`
 A pendência anterior de compilação e execução das consultas está encerrada
 pelo resultado informado. Não foram repetidos testes ou builds nesta revisão.
 Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
-interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Histórico de
-transferências fica para entrega posterior;
-veja o registro no
+interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Sobre as consultas
+de cadastros e bens, veja o registro no
 [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-consultas-de-cadastros-e-bens-no-service).
 
 Consultas de solicitações implementadas no service: listagem com filtros,
@@ -49,6 +48,24 @@ e restaura a validação imediata na mesma transação, preservando as asserçõ
 e o rollback. Esse resultado encerra a pendência de compilação e execução
 desta entrega; os registros históricos acima permanecem preservados. Não
 foram repetidos testes ou builds nesta revisão final.
+
+Histórico de transferências por bem implementado no `ConsultaPatrimonialService`,
+com ator persistido ativo fornecido pela integração interna confiável. Consulta
+somente pedidos `CONCLUIDA`, usando as referências históricas de origem e destino
+e o recebimento registrado no pedido. A visibilidade pelos três setores históricos,
+com acesso global administrativo, é aplicada antes da contagem e paginação.
+Bens inativos permanecem consultáveis. Bem inexistente produz
+`RECURSO_NAO_ENCONTRADO`; ausência de transferências visíveis produz página vazia.
+Página além do fim mantém os totais visíveis; ordenação por recebimento e ID
+decrescentes. Nomes vêm das referências cadastradas, sem snapshots ou tabela
+adicional de histórico.
+
+Validação manual final informada pelo responsável para a entrega de histórico
+de transferências por bem: 167 testes, zero falhas, zero erros, zero ignorados
+e `BUILD SUCCESS`, incluindo `ConsultaTransferenciasBemServiceIT`. Esse resultado
+encerra a pendência de compilação e validação manual desta entrega. Os registros
+históricos acima permanecem preservados. Não foram repetidos testes ou builds
+nesta revisão final.
 
 ## Documentos
 
