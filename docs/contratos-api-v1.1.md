@@ -590,6 +590,47 @@ Condições são cumulativas. Gestor solicitante/aprovador pode receber [APROVAR
 
 erros é [] quando não houver falhas por campo. No conflito por bem solicitado, pode incluir solicitacaoExistenteId, somente se o usuário puder consultar o pedido. Listas vazias retornam 200. Filtro com ID malformado: 400; com referência inexistente: 404.
 
+## Convenções de tradução HTTP aprovadas — 05/11/2026
+
+A resposta padronizada contém exatamente `codigo`, `mensagem` e `erros`.
+Cada item de `erros` contém somente `campo` e `mensagem`. As mensagens públicas
+são controladas em português; não expõem valores rejeitados, SQL, stack traces,
+credenciais, causas ou mensagens técnicas de exceções. Os mapas de falhas por
+campo dos services são convertidos para essa lista, em ordem estável por campo.
+
+- JSON inválido, corpo obrigatório ausente, tipos incompatíveis, parâmetros
+  obrigatórios ausentes, enums e validação de entrada: `400 / DADOS_INVALIDOS`.
+- Quando não houver campo identificável com segurança, inclusive em erro global
+  ou JSON malformado, retornar `erros: []`, sem inventar nomes de campo.
+- `SOLICITANTE_INVALIDO` e `SOLICITANTE_INATIVO`: `401 / NAO_AUTENTICADO`,
+  com mensagem genérica, sem distinguir ausência, inexistência ou inatividade.
+- `PERFIL_NAO_PERMITIDO`: `403 / ACAO_NAO_PERMITIDA`.
+- `REFERENCIA_NAO_ENCONTRADA`: `404 / RECURSO_NAO_ENCONTRADO`.
+- `GESTOR_DESIGNADO_INVALIDO`, na criação ou na decisão de aprovação:
+  `500 / ERRO_INTERNO`, mensagem genérica e `erros: []`. O gestor é designado
+  pelo servidor; a falha cadastral não é atribuída aos campos nem à permissão
+  do ator. Esta decisão encerra a lacuna anterior, sem criar código público.
+- Demais motivos dos services usam o status e o código homônimos da tabela.
+- Falhas inesperadas: `500 / ERRO_INTERNO`, mensagem genérica e `erros: []`.
+- `solicitacaoExistenteId` permanece omitido nesta entrega. Sua inclusão continua
+  opcional no contrato e depende de informação com visibilidade autorizada.
+
+404 de rota, 405, 406 e 415 permanecem com o tratamento padrão do Spring,
+preservando status e headers. A padronização de seus corpos fica **pendente para
+a revisão dos endpoints**; não converter essas respostas em 400 ou 500 pelo fallback.
+
+### Acordo para integração com segurança
+
+O advice traduz erros MVC e as exceções de negócio dos services. A futura cadeia
+de segurança tratará autenticação/autorização em seus próprios filtros e handlers,
+usando os mesmos DTOs `ErroResponse` e `ErroCampoResponse`. Falha de login usa
+`CREDENCIAIS_INVALIDAS`; falha de autenticação nas demais rotas usa `NAO_AUTENTICADO`.
+
+Antes de integrar os filtros ou ativar segurança de métodos, revisar o fallback
+do advice para não consumir exceções de segurança como 500, nem duplicar handlers
+ou escrever uma segunda resposta. Não há mecanismos antecipados, autenticação
+provisória ou alteração da cadeia de segurança nesta entrega.
+
 ## Proteção contra repetição e concorrência
 
 Idempotency-Key não é obrigatório em nenhuma operação do MVP. Não há registro de respostas por chave nem promessa de reproduzir a resposta original em uma repetição. O frontend desabilita o botão enquanto a operação está em andamento.

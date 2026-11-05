@@ -28,8 +28,9 @@ aprovada. Validação manual final informada pelo responsável para a entrega de
 consultas: 144 testes, zero falhas, zero erros, zero ignorados e `BUILD SUCCESS`.
 A pendência anterior de compilação e execução das consultas está encerrada
 pelo resultado informado. Não foram repetidos testes ou builds nesta revisão.
-Controllers, endpoints, integração com autenticação e tradução HTTP do motivo
-interno `GESTOR_DESIGNADO_INVALIDO` permanecem pendentes. Sobre as consultas
+Controllers de negócio, endpoints e integração com autenticação permanecem
+pendentes. A tradução de `GESTOR_DESIGNADO_INVALIDO` foi definida no acordo de
+05/11/2026 abaixo. Sobre as consultas
 de cadastros e bens, veja o registro no
 [documento do modelo](modelo-solicitacoes-movimentacao.md#evolução-consultas-de-cadastros-e-bens-no-service).
 
@@ -66,6 +67,42 @@ e `BUILD SUCCESS`, incluindo `ConsultaTransferenciasBemServiceIT`. Esse resultad
 encerra a pendência de compilação e validação manual desta entrega. Os registros
 históricos acima permanecem preservados. Não foram repetidos testes ou builds
 nesta revisão final.
+
+## Tratamento de erros HTTP — 05/11/2026
+
+Implementados dois DTOs e um único `TratamentoErrosControllerAdvice`, separado
+dos services. O formato contratado mantém `codigo`, `mensagem` e `erros`, sem
+campos técnicos adicionais. `GESTOR_DESIGNADO_INVALIDO` passa a
+`500 / ERRO_INTERNO`, com mensagem genérica e lista vazia. Solicitante inválido
+ou inativo passa a `401 / NAO_AUTENTICADO`, sem revelar a condição interna.
+As demais traduções e convenções aprovadas estão no
+[contrato da API](contratos-api-v1.1.md#convenções-de-tradução-http-aprovadas--05112026).
+
+Testes MVC escritos com MockMvc standalone, validador e controllers exclusivos
+de teste, sem banco ou endpoints de produção. Validação manual final informada
+pelo responsável: `verify -Pintegration` concluído em 05/11/2026 às 19:14:52
+(-03:00), com `BUILD SUCCESS` e **167 testes de integração**, zero falhas,
+zero erros e zero ignorados.
+
+Separadamente, os relatórios Surefire da última execução, atualizados em
+05/11/2026 às 19:13:54, registram **43 testes MVC** em
+`TratamentoErrosControllerAdviceTest` e **3 testes unitários** em
+`TesteNumeroSolicitacao`: **46 testes**, zero falhas, zero erros e zero ignorados.
+O relatório antigo de `BackendApplicationTests`, de 01/11/2026, foi excluído
+dessa contagem. Os números MVC/unitários vêm somente do Surefire, sem inferência
+a partir do Failsafe. A compilação e a execução desta entrega estão validadas;
+não foram repetidos testes ou builds durante esta revisão.
+
+Confirmada a correção de `tratarConversoesDeRotaEQuery`: cada parâmetro inválido
+é enviado uma única vez, com `setorId=1` somente nos casos de outro parâmetro.
+As expectativas de 400, o advice e os conversores foram preservados; o caso
+consta como aprovado no relatório Surefire.
+
+404 de rota, 405, 406 e 415 preservam o tratamento padrão do Spring e seus headers;
+padronizar os corpos fica para a revisão dos endpoints. A futura segurança usará
+os mesmos DTOs, e a revisão do fallback para não consumir exceções de segurança
+como 500 será obrigatória nessa integração. Não foram criados mecanismos
+antecipados nem alterados autenticação, migrations ou dependências.
 
 ## Documentos
 

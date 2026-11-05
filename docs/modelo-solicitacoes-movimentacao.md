@@ -486,3 +486,78 @@ Nenhuma implementação foi alterada nesta revisão. Permanecem pendentes histó
 de transferências, consultas de solicitações, Controllers, endpoints, integração
 com autenticação e tradução HTTP de `GESTOR_DESIGNADO_INVALIDO`. A limitação
 cadastral aprovada permanece válida. Não foram feitos stage, commit ou push.
+
+## Evolução: tratamento de erros HTTP — 05/11/2026
+
+As referências anteriores à tradução pendente de `GESTOR_DESIGNADO_INVALIDO`
+registram o estado das entregas originais. A decisão aprovada nesta entrega
+encerra essa lacuna: criação e decisão traduzem o motivo para
+`500 / ERRO_INTERNO`, com mensagem genérica e `erros: []`. Não se trata de
+campo escolhido pelo cliente nem de falta de permissão do ator; a designação
+é responsabilidade do servidor. As transações e o rollback dos services
+permanecem preservados.
+
+`SOLICITANTE_INVALIDO` e `SOLICITANTE_INATIVO` são traduzidos para
+`401 / NAO_AUTENTICADO`, sem distinguir publicamente essas condições.
+`PERFIL_NAO_PERMITIDO` usa `403 / ACAO_NAO_PERMITIDA` e
+`REFERENCIA_NAO_ENCONTRADA` usa `404 / RECURSO_NAO_ENCONTRADO`.
+Os demais motivos seguem o status e código homônimos do contrato.
+
+A camada HTTP possui somente `erro/dto/ErroResponse`,
+`erro/dto/ErroCampoResponse` e `erro/controller/TratamentoErrosControllerAdvice`,
+sob `br.edu.simpi`. Não cria hierarquia de exceções nem catálogo adicional.
+O advice herda o tratamento MVC do Spring e padroniza falhas de entrada em 400,
+incluindo JSON inválido, corpo obrigatório ausente, conversão, binding e
+validação. Falhas globais sem campo e JSON ilegível usam lista vazia. Mensagens
+de topo e mensagens MVC são controladas em português; falhas por campo dos
+services preservam as mensagens funcionais existentes. Valores rejeitados,
+causas e mensagens técnicas não são publicados. `solicitacaoExistenteId` é omitido.
+
+404 de rota, 405, 406 e 415 mantêm status, headers e tratamento padrão do Spring.
+A definição de seus corpos permanece pendente para a revisão dos endpoints.
+Na futura integração, filtros/handlers de segurança usarão os mesmos DTOs.
+Antes de ativar filtros ou segurança de métodos, revisar o fallback do advice
+para deixar as exceções de segurança seguirem ao mecanismo responsável, sem
+convertê-las em 500 ou duplicar respostas. Não há tratamento antecipado de
+Spring Security nesta entrega.
+
+Os testes MVC usam MockMvc standalone e controllers registrados explicitamente
+apenas em `src/test`, com Bean Validation e sem contexto de banco. Cobrem a
+matriz completa de motivos, formato, validação, conversões, JSON, erro global,
+ocultação de detalhes e status/headers MVC preservados. Na implementação inicial,
+compilação e execução ficaram pendentes de validação manual, encerrada abaixo.
+
+### Revisão final do tratamento de erros — 05/11/2026
+
+Execução manual de `verify -Pintegration` informada pelo responsável, concluída
+às 19:14:52 (-03:00): **167 testes de integração, zero falhas, zero erros,
+zero ignorados e `BUILD SUCCESS`**.
+
+Consultados somente os relatórios Surefire da última execução para a contagem
+MVC/unitária, atualizados em 05/11/2026 às 19:13:54:
+
+- `TratamentoErrosControllerAdviceTest`: **43 testes MVC**, zero falhas,
+  zero erros e zero ignorados.
+- `TesteNumeroSolicitacao`: **3 testes unitários**, zero falhas, zero erros
+  e zero ignorados.
+
+Total Surefire: **46 testes**, separado dos 167 testes de integração informados.
+O relatório residual de `BackendApplicationTests`, de 01/11/2026, não integra
+essa contagem. Nenhum número MVC/unitário foi inferido do resumo do Failsafe.
+Esses resultados encerram a pendência de compilação e execução desta entrega.
+Não foram repetidos testes ou builds nesta revisão.
+
+A revisão confirmou que `tratarConversoesDeRotaEQuery` envia cada valor inválido
+uma única vez e acrescenta `setorId=1` apenas quando outro parâmetro está sob
+teste. O caso consta como aprovado no Surefire; expectativas de 400, advice e
+conversores permanecem preservados.
+
+Revisados os três arquivos de produção, o arquivo de testes e os três documentos
+da entrega. Não foram identificadas credenciais reais ou arquivos gerados entre
+as alterações; as strings sensíveis nos testes são fictícias e verificam sua
+ocultação. Autenticação, migrations, dependências e endpoints de negócio
+permanecem fora das alterações.
+
+Continuam pendentes a padronização dos corpos de 404 de rota, 405, 406 e 415
+na revisão dos endpoints e a integração com segurança usando os mesmos DTOs,
+com revisão do fallback para não consumir exceções de segurança como 500.
