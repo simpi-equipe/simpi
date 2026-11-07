@@ -39,6 +39,8 @@ jobs:
       DB_URL: jdbc:postgresql://127.0.0.1:5432/simpi_test
       POSTGRES_USER: simpi_ci
       POSTGRES_PASSWORD: simpi_ci_only
+      # Chave pública exclusiva dos testes; Base64 de 32 bytes.
+      JWT_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
 
     defaults:
       run:
