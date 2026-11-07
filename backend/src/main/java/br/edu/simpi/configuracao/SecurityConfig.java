@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import br.edu.simpi.autenticacao.CustomAuthenticationEntryPoint;
 import br.edu.simpi.autenticacao.JwtAuthenticationFilter;
+import br.edu.simpi.autenticacao.TratamentoAcessoNegado;
 
 @Configuration
 @EnableWebSecurity
@@ -22,11 +23,14 @@ import br.edu.simpi.autenticacao.JwtAuthenticationFilter;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final TratamentoAcessoNegado tratamentoAcessoNegado;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-            CustomAuthenticationEntryPoint authenticationEntryPoint) {
+            CustomAuthenticationEntryPoint authenticationEntryPoint,
+            TratamentoAcessoNegado tratamentoAcessoNegado) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
+        this.tratamentoAcessoNegado = tratamentoAcessoNegado;
     }
 
     @Bean
@@ -45,7 +49,8 @@ public class SecurityConfig {
 
                 )
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(authenticationEntryPoint))
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(tratamentoAcessoNegado))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form.disable())

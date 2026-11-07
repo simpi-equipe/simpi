@@ -15,6 +15,8 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -93,11 +95,14 @@ public class TratamentoErrosControllerAdvice extends ResponseEntityExceptionHand
         };
     }
 
-    // Rever este fallback ao integrar Spring Security, antes de ativar seus
-    // filtros/métodos.
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> tratarFalhaInesperada(Exception excecao) {
-
+    public ResponseEntity<Object> tratarFalhaInesperada(Exception excecao) throws Exception {
+        // A cadeia de segurança escreve a resposta; preserve inclusive o invólucro original.
+        for (Throwable causa = excecao; causa != null; causa = causa.getCause()) {
+            if (causa instanceof AuthenticationException || causa instanceof AccessDeniedException) {
+                throw excecao;
+            }
+        }
         return responder(500, "ERRO_INTERNO", Map.of());
     }
 

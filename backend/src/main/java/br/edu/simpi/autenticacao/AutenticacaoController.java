@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +16,7 @@ import br.edu.simpi.autenticacao.dto.AutenticacaoResponse;
 import br.edu.simpi.autenticacao.dto.UsuarioResponse;
 import br.edu.simpi.erro.dto.ErroResponse;
 import br.edu.simpi.usuario.Usuario;
+import jakarta.validation.Valid;
 import org.springframework.security.core.AuthenticationException;
 
 @RestController
@@ -30,21 +30,12 @@ public class AutenticacaoController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AutenticacaoRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody AutenticacaoRequest request) {
 
         try {
             AutenticacaoResponse response = autenticacaoService.autenticar(request);
 
             return ResponseEntity.ok(response);
-
-        } catch (DisabledException e) {
-
-            ErroResponse erro = new ErroResponse(
-                    "USUARIO_DESATIVADO",
-                    "Usuário desativado.",
-                    List.of());
-
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
 
         } catch (AuthenticationException e) {
 
