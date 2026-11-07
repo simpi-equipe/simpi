@@ -93,16 +93,19 @@ public class TratamentoErrosControllerAdvice extends ResponseEntityExceptionHand
         };
     }
 
-    // Rever este fallback ao integrar Spring Security, antes de ativar seus filtros/métodos.
+    // Rever este fallback ao integrar Spring Security, antes de ativar seus
+    // filtros/métodos.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> tratarFalhaInesperada(Exception excecao) {
+
         return responder(500, "ERRO_INTERNO", Map.of());
     }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception excecao, Object corpo,
             HttpHeaders cabecalhos, HttpStatusCode estado, WebRequest requisicao) {
-        // Preserva inclusive os headers e corpos MVC ainda fora da padronização aprovada.
+        // Preserva inclusive os headers e corpos MVC ainda fora da padronização
+        // aprovada.
         if (estado.value() != 400 && estado.value() != 500) {
             return super.handleExceptionInternal(excecao, corpo, cabecalhos, estado, requisicao);
         }
@@ -134,7 +137,8 @@ public class TratamentoErrosControllerAdvice extends ResponseEntityExceptionHand
                     .distinct().sorted()
                     .map(nome -> new ErroCampoResponse(nome, "Revise o valor informado.")).toList();
         }
-        // Não publica mensagens do parser, valores rejeitados ou campos globais inventados.
+        // Não publica mensagens do parser, valores rejeitados ou campos globais
+        // inventados.
         return List.of();
     }
 

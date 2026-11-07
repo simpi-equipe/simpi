@@ -15,9 +15,16 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.Objects;
 
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 @Entity
 @Table(name = "usuario")
-public class Usuario {
+public class Usuario implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "gerador_usuario")
@@ -77,5 +84,40 @@ public class Usuario {
 
     public boolean isAtivo() {
         return ativo;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + perfil.name()));
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public String getPassword() {
+        return senhaHash;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return ativo;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
     }
 }
