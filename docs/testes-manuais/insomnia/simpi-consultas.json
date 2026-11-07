@@ -1,0 +1,1199 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-11-07T19:53:12.231Z",
+  "__export_source": "simpi.testes-manuais",
+  "resources": [
+    {
+      "_id": "wrk_simpi_consultas",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "SIMPI - Consultas autenticadas",
+      "scope": "collection",
+      "description": "Execute as pastas numeradas na ordem, com banco e aplicação iniciados. No ambiente base, preencha email e senha de um usuário ativo existente. Execute Login e copie somente accessToken para token (sem Bearer). Não há captura automática do token. Copie IDs reais das listas para setorId, localizacaoId, bemId e solicitacaoId antes dos detalhes. As consultas não criam dados. Listas vazias são válidas. Cenários de GESTOR/ADMINISTRADOR são condicionais: troque as credenciais, faça novo login e atualize token. Restaure um usuário COMUM para os casos 403. Não execute tudo de uma vez: há etapas manuais e pré-condições. Erros: codigo,mensagem,erros; itens de erros: campo,mensagem. Datas ISO 8601 UTC com Z; opcionais previstos usam null; arrays vazios usam []."
+    },
+    {
+      "_id": "env_simpi_consultas",
+      "_type": "environment",
+      "parentId": "wrk_simpi_consultas",
+      "name": "Base Environment",
+      "data": {
+        "url_base": "http://127.0.0.1:8080",
+        "email": "",
+        "senha": "",
+        "token": "",
+        "setorId": "",
+        "localizacaoId": "",
+        "bemId": "",
+        "solicitacaoId": "",
+        "idInexistente": "9223372036854775807",
+        "buscaBem": "",
+        "buscaSolicitacao": ""
+      },
+      "dataPropertyOrder": null,
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "fld_simpi_1",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "01 - Autenticação",
+      "description": "Preencha email e senha no ambiente. Após o login, copie accessToken para token, sem o prefixo Bearer. O usuário deve estar previamente cadastrado e ativo.",
+      "environment": {},
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_simpi_001",
+      "_type": "request",
+      "parentId": "fld_simpi_1",
+      "name": "01.01 - Login [200]",
+      "description": "Esperado: 200 com accessToken,tokenType=Bearer,expiresIn,usuario. Copie accessToken para token no ambiente. Credenciais incorretas ou usuário inativo: 401 CREDENCIAIS_INVALIDAS. Campos vazios: 400 DADOS_INVALIDOS. Se a senha contiver aspas ou barras invertidas, preserve o escape JSON no corpo interpolado.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email }}\",\n  \"senha\": \"{{ _.senha }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 1,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_002",
+      "_type": "request",
+      "parentId": "fld_simpi_1",
+      "name": "01.02 - Identidade atual [200]",
+      "description": "Esperado: 200 com id,nome,email,perfil,setor na raiz, sem senha, hash ou token. Confira o perfil para os testes condicionais. Token inválido, expirado ou ausente: 401 NAO_AUTENTICADO.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/auth/me",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 2,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_2",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "02 - Cadastros",
+      "description": "Listas autenticadas, sem paginação, somente ativos, ordenadas por nome e id. Copie IDs reais para o ambiente.",
+      "environment": {},
+      "metaSortKey": 2
+    },
+    {
+      "_id": "req_simpi_003",
+      "_type": "request",
+      "parentId": "fld_simpi_2",
+      "name": "02.01 - Listar setores [200]",
+      "description": "Esperado: array de {id,codigo,nome}, inclusive []. Copie um id existente para setorId.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/setores",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 3,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_004",
+      "_type": "request",
+      "parentId": "fld_simpi_2",
+      "name": "02.02 - Listar localizações [200]",
+      "description": "Esperado: array de {id,codigo,nome}, inclusive []. Copie um id existente para localizacaoId. Localizações não são restringidas pelo setor.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/localizacoes",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 4,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_005",
+      "_type": "request",
+      "parentId": "fld_simpi_2",
+      "name": "02.03 - Listar usuários do setor [200]",
+      "description": "Pré-condição: setorId existente. Esperado: array de {id,nome,setor:{id,nome}}, sem credenciais. Setor existente sem usuários ativos: []. Consultar outro setor é permitido.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/usuarios",
+      "body": {},
+      "parameters": [
+        {
+          "name": "setorId",
+          "value": "{{ _.setorId }}",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 5,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_3",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "03 - Bens",
+      "description": "Comece pela lista e defina bemId. Filtros são combinados; sem correspondências, conteudo=[].",
+      "environment": {},
+      "metaSortKey": 3
+    },
+    {
+      "_id": "req_simpi_006",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.01 - Listar bens com padrões [200]",
+      "description": "Esperado: pagina=0,tamanho=20 e campos conteudo,pagina,tamanho,totalElementos,totalPaginas. Item: id,codigo,plaqueta,descricao,setor,localizacao,responsavel,ativo,disponivelParaSolicitacao. Ordenação por codigo e id crescentes. Copie um id de conteudo para bemId. Lista vazia é válida.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 6,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_007",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.02 - Pesquisar bens com filtros [200]",
+      "description": "Pré-condições: setorId e localizacaoId existentes. buscaBem é parte de código, plaqueta ou descrição; vazia não restringe. Esperado: pagina=0,tamanho=5, filtros combinados e somente bens disponíveis. Sem correspondências: conteudo=[]. Alterne disponivelParaSolicitacao para false ou desabilite parâmetros para variar.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [
+        {
+          "name": "busca",
+          "value": "{{ _.buscaBem }}",
+          "disabled": false
+        },
+        {
+          "name": "setorId",
+          "value": "{{ _.setorId }}",
+          "disabled": false
+        },
+        {
+          "name": "localizacaoId",
+          "value": "{{ _.localizacaoId }}",
+          "disabled": false
+        },
+        {
+          "name": "disponivelParaSolicitacao",
+          "value": "true",
+          "disabled": false
+        },
+        {
+          "name": "pagina",
+          "value": "0",
+          "disabled": false
+        },
+        {
+          "name": "tamanho",
+          "value": "5",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 7,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_008",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.03 - Detalhar bem [200]",
+      "description": "Pré-condição: bemId existente. Esperado: campos do bem na raiz e solicitacaoEmAndamento={id,numero} quando visível. Esse campo é null quando ausente ou sem acesso; disponibilidade pode continuar false.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/{{ _.bemId }}",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 8,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_009",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.04 - Histórico de transferências [200]",
+      "description": "Pré-condição: bemId existente. Esperado: página de solicitações CONCLUIDAS visíveis, itens com solicitacaoId,numero,recebidaEm,origem,destino. Datas UTC com Z; referências históricas; recebidaEm e solicitacaoId decrescentes. Sem histórico visível: conteudo=[]. Bem inativo existente também é consultável.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/{{ _.bemId }}/transferencias",
+      "body": {},
+      "parameters": [
+        {
+          "name": "pagina",
+          "value": "0",
+          "disabled": false
+        },
+        {
+          "name": "tamanho",
+          "value": "20",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 9,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_010",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.05 - Bens em página além do fim [200]",
+      "description": "Esperado no banco local: conteudo=[], pagina=2147483647,tamanho=20, mantendo totais reais. Página além do fim não é 404.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [
+        {
+          "name": "pagina",
+          "value": "2147483647",
+          "disabled": false
+        },
+        {
+          "name": "tamanho",
+          "value": "20",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 10,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_011",
+      "_type": "request",
+      "parentId": "fld_simpi_3",
+      "name": "03.06 - Histórico com paginação omitida [200]",
+      "description": "Pré-condição: bemId existente. Esperado: pagina=0,tamanho=20 e os cinco campos de paginação, mesmo sem itens.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/{{ _.bemId }}/transferencias",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 11,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_4",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "04 - Solicitações",
+      "description": "Pedidos devem existir e estar visíveis. Execute os casos de GESTOR/ADMINISTRADOR somente com a conta correspondente e um novo token.",
+      "environment": {},
+      "metaSortKey": 4
+    },
+    {
+      "_id": "req_simpi_012",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.01 - Listar solicitações com padrões [200]",
+      "description": "Esperado: visao efetiva DA_MINHA_AREA,pagina=0,tamanho=20. Resumo: id,numero,criadaEm,status,bem,solicitante,setorOrigem,setorDestino. Datas UTC com Z; criadaEm e id decrescentes. Copie um id visível para solicitacaoId. Sem itens: conteudo=[].",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 12,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_013",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.02 - Solicitações criadas por mim [200]",
+      "description": "Esperado: filtros combinados. buscaSolicitacao é parte do número ou código do bem; vazia não restringe. Status válidos: AGUARDANDO_GESTOR_AREA,AGUARDANDO_GESTOR_RESPONSAVEL,APROVADA,EM_TRANSITO,CONCLUIDA,RECUSADA,CANCELADA. Desabilite status para todos os estados. Sem itens: conteudo=[].",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "busca",
+          "value": "{{ _.buscaSolicitacao }}",
+          "disabled": false
+        },
+        {
+          "name": "status",
+          "value": "APROVADA",
+          "disabled": false
+        },
+        {
+          "name": "visao",
+          "value": "CRIADAS_POR_MIM",
+          "disabled": false
+        },
+        {
+          "name": "pagina",
+          "value": "0",
+          "disabled": false
+        },
+        {
+          "name": "tamanho",
+          "value": "5",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 13,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_014",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.03 - Detalhar solicitação visível [200]",
+      "description": "Pré-condição: solicitacaoId existente e visível. Esperado: objeto completo na raiz com bem,solicitante,origem,destino,aprovacoes,envio,recebimento,eventos,acoesDisponiveis. Opcionais previstos usam null; arrays sem itens usam []; enums textuais e datas UTC com Z. Ações são calculadas pelo backend.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 14,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_015",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.04 - Fila de envios e recebimentos [200]",
+      "description": "Esperado: fila operacional visível; APROVADA com origem no setor atual ou EM_TRANSITO com destino nele. Sem itens: conteudo=[].",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "ENVIOS_E_RECEBIMENTOS",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 15,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_016",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.05 - Aprovações pendentes [200 - somente GESTOR]",
+      "description": "CONDICIONAL: faça login com usuário ativo GESTOR e atualize token. Esperado: 200 com etapas pendentes designadas e elegíveis; pode ser []. COMUM ou ADMINISTRADOR recebe 403 ACAO_NAO_PERMITIDA.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "AGUARDANDO_MINHA_APROVACAO",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 16,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_017",
+      "_type": "request",
+      "parentId": "fld_simpi_4",
+      "name": "04.06 - Consulta global [200 - somente ADMINISTRADOR]",
+      "description": "CONDICIONAL: faça login como ADMINISTRADOR e atualize token. Esperado: 200 com consulta global paginada. COMUM ou GESTOR recebe 403. Restaure uma conta COMUM antes dos cenários 403 da pasta 05.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "TODAS",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 17,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_5",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "05 - Erros esperados",
+      "description": "Use token válido, salvo nos casos explicitamente sem token ou com token inválido. Casos 403 exigem COMUM. idInexistente deve ser positivo e comprovadamente ausente. Erros contêm exatamente codigo,mensagem,erros; cada erro de campo contém campo,mensagem.",
+      "environment": {},
+      "metaSortKey": 5
+    },
+    {
+      "_id": "req_simpi_018",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.01 - Usuários sem setor obrigatório [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo setorId.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/usuarios",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 18,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_019",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.02 - Setor com formato inválido [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo setorId. Conversão padrão do Spring.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/usuarios",
+      "body": {},
+      "parameters": [
+        {
+          "name": "setorId",
+          "value": "abc",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 19,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_020",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.03 - Booleano inválido [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo disponivelParaSolicitacao.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [
+        {
+          "name": "disponivelParaSolicitacao",
+          "value": "talvez",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 20,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_021",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.04 - Página negativa [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo pagina. Regra validada pelo service.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [
+        {
+          "name": "pagina",
+          "value": "-1",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 21,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_022",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.05 - Tamanho acima do máximo [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo tamanho. Limites: 1 a 100.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "tamanho",
+          "value": "101",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 22,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_023",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.06 - Status desconhecido [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo status.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "status",
+          "value": "DESCONHECIDO",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 23,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_024",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.07 - Visão desconhecida [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo visao.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "DESCONHECIDA",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 24,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_025",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.08 - ID de bem não numérico [400]",
+      "description": "Esperado: 400 DADOS_INVALIDOS; campo id, sem detalhes técnicos.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/abc",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 25,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_026",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.09 - Consulta sem token [401]",
+      "description": "Sem Authorization, intencionalmente. Esperado: 401 NAO_AUTENTICADO; erros=[].",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 26,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_027",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.10 - Consulta com token inválido [401]",
+      "description": "Bearer inválido, intencionalmente. Esperado: 401 NAO_AUTENTICADO; erros=[]. Não altera token no ambiente.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "token-invalido-para-teste"
+      },
+      "metaSortKey": 27,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_028",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.11 - Consulta global por COMUM [403]",
+      "description": "PRÉ-CONDIÇÃO: token de usuário COMUM. Esperado: 403 ACAO_NAO_PERMITIDA; erros=[]. ADMINISTRADOR recebe 200.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "TODAS",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 28,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_029",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.12 - Aprovações pendentes por COMUM [403]",
+      "description": "PRÉ-CONDIÇÃO: token de usuário COMUM. Esperado: 403 ACAO_NAO_PERMITIDA; erros=[]. GESTOR recebe 200.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {},
+      "parameters": [
+        {
+          "name": "visao",
+          "value": "AGUARDANDO_MINHA_APROVACAO",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 29,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_030",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.13 - Setor inexistente [404]",
+      "description": "Pré-condição: idInexistente positivo e ausente no banco. Esperado: 404 RECURSO_NAO_ENCONTRADO; campo setorId.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/usuarios",
+      "body": {},
+      "parameters": [
+        {
+          "name": "setorId",
+          "value": "{{ _.idInexistente }}",
+          "disabled": false
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 30,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_031",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.14 - Bem inexistente [404]",
+      "description": "Pré-condição: idInexistente positivo e ausente. Esperado: 404 RECURSO_NAO_ENCONTRADO; campo bemId.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/{{ _.idInexistente }}",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 31,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_032",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.15 - Histórico de bem inexistente [404]",
+      "description": "Pré-condição: idInexistente positivo e ausente. Esperado: 404 RECURSO_NAO_ENCONTRADO.",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/bens/{{ _.idInexistente }}/transferencias",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 32,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_033",
+      "_type": "request",
+      "parentId": "fld_simpi_5",
+      "name": "05.16 - Solicitação inexistente [404]",
+      "description": "Pré-condição: idInexistente positivo e ausente. Esperado: 404 SOLICITACAO_NAO_ENCONTRADA; erros=[].",
+      "method": "GET",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.idInexistente }}",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 33,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+}
