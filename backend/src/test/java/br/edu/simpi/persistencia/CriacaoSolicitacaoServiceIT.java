@@ -43,6 +43,8 @@ import java.util.function.Function;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -98,15 +100,17 @@ class CriacaoSolicitacaoServiceIT {
         this.mapeador = mapeador;
     }
 
-    @Test
-    void criaPedidoComumComRespostaCompletaEReferenciasPreservadas() {
+    @ParameterizedTest
+    @ValueSource(strings = {"COMUM", "ADMINISTRADOR"})
+    void criaPedidoComAprovacaoAreaERespostaCompletaEReferenciasPreservadas(String perfil) {
         emTransacao(dados -> {
             // Setor solicitante difere da origem e do destino.
             // O preparo inicial tornou imediata a FK necessária à carga circular.
             banco.execute("SET CONSTRAINTS fk_setor_gestor DEFERRED");
             var terceiro = DadosPatrimoniaisTeste.preparar(banco);
             banco.execute("SET CONSTRAINTS fk_setor_gestor IMMEDIATE");
-            banco.update("UPDATE usuario SET setor_id = ? WHERE id = ?", terceiro.setorId(), dados.solicitanteId());
+            banco.update("UPDATE usuario SET perfil = ?, setor_id = ? WHERE id = ?",
+                    perfil, terceiro.setorId(), dados.solicitanteId());
             var resposta = servico.criar(entrada(dados), solicitante(dados));
             assertNotNull(resposta.id());
             assertNotNull(resposta.numero());
@@ -155,6 +159,40 @@ class CriacaoSolicitacaoServiceIT {
             assertEquals(dados.origem().setorId(), relida.getSetorOrigem().getId());
             assertEquals(dados.origem().localizacaoId(), relida.getLocalizacaoOrigem().getId());
             assertEquals(dados.origem().gestorId(), relida.getResponsavelOrigem().getId());
+        });
+    }
+
+    @Test
+    void administradorDependeDasDuasAprovacoesDosGestoresDesignados() {
+        emTransacao(dados -> {
+            banco.execute("SET CONSTRAINTS fk_setor_gestor DEFERRED");
+            var area = DadosPatrimoniaisTeste.preparar(banco);
+            banco.execute("SET CONSTRAINTS fk_setor_gestor IMMEDIATE");
+            banco.update("UPDATE usuario SET perfil = 'ADMINISTRADOR', setor_id = ? WHERE id = ?",
+                    area.setorId(), dados.solicitanteId());
+
+            var criada = servico.criar(entrada(dados), solicitante(dados));
+            var primeira = criada.aprovacoes().getFirst();
+            assertEquals(StatusSolicitacao.AGUARDANDO_GESTOR_AREA, criada.status());
+            assertEquals(area.gestorId(), primeira.aprovador().id());
+            assertEquals(List.of("CANCELAR"), criada.acoesDisponiveis());
+
+            var aposArea = servico.aprovar(criada.id(), primeira.id(),
+                    usuarios.findById(area.gestorId()).orElseThrow());
+            assertEquals(StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL, aposArea.status());
+            assertEquals(2, aposArea.aprovacoes().size());
+            assertEquals(DecisaoAprovacao.APROVADA, aposArea.aprovacoes().getFirst().decisao());
+            var segunda = aposArea.aprovacoes().getLast();
+            assertEquals(EtapaAprovacao.GESTOR_RESPONSAVEL, segunda.etapa());
+            assertEquals(dados.origem().gestorId(), segunda.aprovador().id());
+            assertEquals(DecisaoAprovacao.PENDENTE, segunda.decisao());
+
+            var aprovada = servico.aprovar(criada.id(), segunda.id(),
+                    usuarios.findById(dados.origem().gestorId()).orElseThrow());
+            assertEquals(StatusSolicitacao.APROVADA, aprovada.status());
+            assertTrue(aprovada.aprovacoes().stream()
+                    .allMatch(aprovacao -> aprovacao.decisao() == DecisaoAprovacao.APROVADA));
+            verificarBemInalterado(dados);
         });
     }
 
@@ -272,17 +310,15 @@ class CriacaoSolicitacaoServiceIT {
         }
     }
 
-    @Test
-    void rejeitaSolicitanteInativoAdministradorOuAusente() {
+    @ParameterizedTest
+    @ValueSource(strings = {"COMUM", "ADMINISTRADOR"})
+    void rejeitaSolicitanteInativoOuAusente(String perfil) {
         emTransacao(dados -> {
             Usuario antigo = solicitante(dados);
-            banco.update("UPDATE usuario SET ativo = false WHERE id = ?", dados.solicitanteId());
+            banco.update("UPDATE usuario SET perfil = ?, ativo = false WHERE id = ?",
+                    perfil, dados.solicitanteId());
             assertEquals(SOLICITANTE_INATIVO, assertThrows(ExcecaoCriacaoSolicitacao.class,
                     () -> servico.criar(entrada(dados), antigo)).getMotivo());
-        });
-        emTransacao(dados -> {
-            banco.update("UPDATE usuario SET perfil = 'ADMINISTRADOR' WHERE id = ?", dados.solicitanteId());
-            verificarFalha(dados, PERFIL_NAO_PERMITIDO);
         });
         emTransacao(dados -> {
             assertEquals(SOLICITANTE_INVALIDO, assertThrows(ExcecaoCriacaoSolicitacao.class,

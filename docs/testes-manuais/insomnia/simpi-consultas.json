@@ -8,9 +8,9 @@
       "_id": "wrk_simpi_consultas",
       "_type": "workspace",
       "parentId": null,
-      "name": "SIMPI - Consultas autenticadas",
+      "name": "SIMPI - Consultas e criação",
       "scope": "collection",
-      "description": "Execute as pastas numeradas na ordem, com banco e aplicação iniciados. No ambiente base, preencha email e senha de um usuário ativo existente. Execute Login e copie somente accessToken para token (sem Bearer). Não há captura automática do token. Copie IDs reais das listas para setorId, localizacaoId, bemId e solicitacaoId antes dos detalhes. As consultas não criam dados. Listas vazias são válidas. Cenários de GESTOR/ADMINISTRADOR são condicionais: troque as credenciais, faça novo login e atualize token. Restaure um usuário COMUM para os casos 403. Não execute tudo de uma vez: há etapas manuais e pré-condições. Erros: codigo,mensagem,erros; itens de erros: campo,mensagem. Datas ISO 8601 UTC com Z; opcionais previstos usam null; arrays vazios usam []."
+      "description": "Execute as pastas numeradas na ordem, com banco e aplicação iniciados. No ambiente base, preencha email e senha de um usuário ativo existente. Execute Login e copie somente accessToken para token (sem Bearer). Não há captura automática do token. Copie IDs reais das listas para setorId, localizacaoId, bemId e solicitacaoId antes dos detalhes. As consultas não criam dados. Listas vazias são válidas. Cenários de GESTOR/ADMINISTRADOR são condicionais: troque as credenciais, faça novo login e atualize token. Restaure um usuário COMUM para os casos 403. Não execute tudo de uma vez: há etapas manuais e pré-condições. Erros: codigo,mensagem,erros; itens de erros: campo,mensagem. Datas ISO 8601 UTC com Z; opcionais previstos usam null; arrays vazios usam []. A pasta 06 cria solicitações: preencha os IDs de destino e use um bem disponível. Consulte docs/seed-desenvolvimento.md para preparar dados fictícios."
     },
     {
       "_id": "env_simpi_consultas",
@@ -28,7 +28,10 @@
         "solicitacaoId": "",
         "idInexistente": "9223372036854775807",
         "buscaBem": "",
-        "buscaSolicitacao": ""
+        "buscaSolicitacao": "",
+        "setorDestinoId": "",
+        "localizacaoDestinoId": "",
+        "responsavelDestinoId": ""
       },
       "dataPropertyOrder": null,
       "color": null,
@@ -1187,6 +1190,87 @@
         "token": "{{ _.token }}"
       },
       "metaSortKey": 33,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_criacao",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "06 - Criação de solicitações",
+      "description": "Executar manualmente: o primeiro POST cria dados. Para COMUM e ADMINISTRADOR, espere AGUARDANDO_GESTOR_AREA; para GESTOR, AGUARDANDO_GESTOR_RESPONSAVEL. Copie o id retornado para solicitacaoId e consulte o detalhe. Repetir para o mesmo bem retorna 409.",
+      "environment": {},
+      "metaSortKey": 7
+    },
+    {
+      "_id": "req_simpi_criar",
+      "_type": "request",
+      "parentId": "fld_simpi_criacao",
+      "name": "06.01 - Criar solicitação [201]",
+      "description": "Esperado: 201 e Location /api/solicitacoes/{id}. Preencha os IDs com referências ativas e responsável do destino. A identidade vem do JWT; não enviar solicitanteId. Não executar em lote.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"bemId\": {{ _.bemId }},\n  \"setorDestinoId\": {{ _.setorDestinoId }},\n  \"localizacaoDestinoId\": {{ _.localizacaoDestinoId }},\n  \"responsavelDestinoId\": {{ _.responsavelDestinoId }},\n  \"justificativa\": \"Movimentação de demonstração\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 141,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_criar_conflito",
+      "_type": "request",
+      "parentId": "fld_simpi_criacao",
+      "name": "06.02 - Repetir criação [409]",
+      "description": "Executar após 06.01, para o mesmo bem e destino. Esperado: 409 BEM_COM_SOLICITACAO_EM_ANDAMENTO, sem Location e sem duplicação do pedido.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"bemId\": {{ _.bemId }},\n  \"setorDestinoId\": {{ _.setorDestinoId }},\n  \"localizacaoDestinoId\": {{ _.localizacaoDestinoId }},\n  \"responsavelDestinoId\": {{ _.responsavelDestinoId }},\n  \"justificativa\": \"Movimentação de demonstração\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 142,
       "isPrivate": false,
       "settingStoreCookies": false,
       "settingSendCookies": false,

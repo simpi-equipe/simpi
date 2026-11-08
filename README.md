@@ -11,7 +11,9 @@ O código deste checkout inclui:
 - Autenticação JWT: login e consulta de identidade em `/api/auth/me`.
 - Oito rotas GET de consulta de cadastros, bens, transferências e solicitações.
 - Swagger UI/OpenAPI com springdoc 3.2.0 e coleção Insomnia para testes manuais.
-- Services de criação e ações de solicitações; seus Controllers HTTP permanecem pendentes.
+- Criação de solicitações em `POST /api/solicitacoes`, com usuário autenticado, `201` e `Location`.
+- Services das ações de solicitações; seus Controllers HTTP permanecem pendentes.
+- Seed optativo de desenvolvimento com cadastros fictícios e senha informada na execução.
 - Migrations V1 e V2, Hibernate em validação e bancos separados para desenvolvimento e integração.
 - Testes unitários, MVC/OpenAPI e de integração, além dos workflows de CI.
 
@@ -158,6 +160,7 @@ e volumes separados; não use o banco de desenvolvimento para os testes de integ
 - [Swagger e OpenAPI](docs/docker-backend.md#swagger-e-openapi): login, Authorize e consultas autenticadas.
 - [Coleção Insomnia](docs/docker-backend.md#coleção-insomnia): importação, ambiente e sequência de chamadas.
 - [Dados locais](docs/docker-backend.md#preparar-dados-locais): setor/gestor, usuário COMUM e BCrypt.
+- [Seed de desenvolvimento](docs/seed-desenvolvimento.md): carga optativa e roteiro de validação da criação.
 - [Contrato v1.1](docs/contratos-api-v1.1.md): referência funcional de parâmetros, respostas e erros.
 
 ## Testes e build
@@ -243,7 +246,7 @@ específica.
 - Resolver e validar as pendências técnicas registradas na
   [documentação funcional](docs/documentacao-funcional.md#decisões-técnicas-e-pendências-funcionais).
 - Evoluir migrations e entidades somente quando a próxima entrega aprovada exigir.
-- Implementar os Controllers de criação e ações de solicitações, reutilizando os services existentes.
+- Implementar os Controllers das ações de solicitações, reutilizando os services existentes.
 - Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
   antes de planejar a conexão remota.

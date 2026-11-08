@@ -108,18 +108,18 @@ public class SolicitacaoService {
                 .orElseThrow(() -> referenciaAusente("responsavelDestinoId"));
         validarDestino(bem, setorDestino, localizacaoDestino, responsavelDestino);
 
-        boolean solicitanteComum = solicitanteAtual.getPerfil() == PerfilUsuario.COMUM;
-        EtapaAprovacao etapa = solicitanteComum ? EtapaAprovacao.GESTOR_AREA : EtapaAprovacao.GESTOR_RESPONSAVEL;
-        StatusSolicitacao estado = solicitanteComum
+        boolean exigeAprovacaoArea = solicitanteAtual.getPerfil() != PerfilUsuario.GESTOR;
+        EtapaAprovacao etapa = exigeAprovacaoArea ? EtapaAprovacao.GESTOR_AREA : EtapaAprovacao.GESTOR_RESPONSAVEL;
+        StatusSolicitacao estado = exigeAprovacaoArea
                 ? StatusSolicitacao.AGUARDANDO_GESTOR_AREA : StatusSolicitacao.AGUARDANDO_GESTOR_RESPONSAVEL;
-        Setor setorAprovador = solicitanteComum ? solicitanteAtual.getSetor() : bem.getSetor();
+        Setor setorAprovador = exigeAprovacaoArea ? solicitanteAtual.getSetor() : bem.getSetor();
         Usuario aprovador = validarGestorDesignado(setorAprovador);
         Instant referenciaTemporal = relogio.instant();
         var numero = numeros.gerar(referenciaTemporal);
         Solicitacao solicitacao = new Solicitacao(numero, bem, solicitanteAtual,
                 setorDestino, localizacaoDestino, responsavelDestino, entrada.justificativa().strip(), estado);
         Aprovacao aprovacao = new Aprovacao(solicitacao, etapa, aprovador);
-        String descricao = solicitanteComum ? "Solicitação encaminhada ao gestor da área."
+        String descricao = exigeAprovacaoArea ? "Solicitação encaminhada ao gestor da área."
                 : "Solicitação encaminhada ao gestor responsável.";
         EventoSolicitacao evento = new EventoSolicitacao(solicitacao, solicitanteAtual,
                 TipoEventoSolicitacao.CRIACAO, null, estado, descricao, numero.criadaEm());
@@ -424,7 +424,8 @@ public class SolicitacaoService {
         if (!atual.isAtivo()) {
             throw falha(SOLICITANTE_INATIVO, "Solicitante inativo.", Map.of());
         }
-        if (atual.getPerfil() != PerfilUsuario.COMUM && atual.getPerfil() != PerfilUsuario.GESTOR) {
+        if (atual.getPerfil() != PerfilUsuario.COMUM && atual.getPerfil() != PerfilUsuario.GESTOR
+                && atual.getPerfil() != PerfilUsuario.ADMINISTRADOR) {
             throw falha(PERFIL_NAO_PERMITIDO, "Perfil sem permissão para criar solicitações.", Map.of());
         }
         return atual;

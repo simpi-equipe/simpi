@@ -11,7 +11,9 @@ import br.edu.simpi.consulta.service.ConsultaPatrimonialService;
 import br.edu.simpi.erro.controller.TratamentoErrosControllerAdvice;
 import br.edu.simpi.setor.Setor;
 import br.edu.simpi.solicitacao.controller.SolicitacaoConsultaController;
+import br.edu.simpi.solicitacao.controller.SolicitacaoCriacaoController;
 import br.edu.simpi.solicitacao.service.ConsultaSolicitacaoService;
+import br.edu.simpi.solicitacao.service.SolicitacaoService;
 import br.edu.simpi.usuario.CustomUserDetailsService;
 import br.edu.simpi.usuario.PerfilUsuario;
 import br.edu.simpi.usuario.Usuario;
@@ -40,11 +42,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnableWebMvc
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, CustomAuthenticationEntryPoint.class,
         TratamentoAcessoNegado.class, CustomUserDetailsService.class, TratamentoErrosControllerAdvice.class,
-        CadastroConsultaController.class, BemConsultaController.class, SolicitacaoConsultaController.class})
+        CadastroConsultaController.class, BemConsultaController.class, SolicitacaoConsultaController.class,
+        SolicitacaoCriacaoController.class})
 public class ConfiguracaoMvcConsultasTeste {
     @Bean ConsultaPatrimonialService consultasPatrimoniais() { return mock(ConsultaPatrimonialService.class); }
     @Bean ConsultaSolicitacaoService consultasSolicitacoes() { return mock(ConsultaSolicitacaoService.class); }
     @Bean UsuarioRepository usuarios() { return mock(UsuarioRepository.class); }
+    @Bean SolicitacaoService solicitacoes() {
+        return mock(SolicitacaoService.class);
+    }
     @Bean ObjectMapper conversorJson() { return JsonMapper.builder().build(); }
     @Bean JwtService servicoJwt() {
         return new JwtService("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=", 3600000);
@@ -52,7 +58,8 @@ public class ConfiguracaoMvcConsultasTeste {
 
     public static Usuario prepararAtor(WebApplicationContext contexto) {
         reset(contexto.getBean(ConsultaPatrimonialService.class),
-                contexto.getBean(ConsultaSolicitacaoService.class), contexto.getBean(UsuarioRepository.class));
+                contexto.getBean(ConsultaSolicitacaoService.class), contexto.getBean(UsuarioRepository.class),
+                contexto.getBean(SolicitacaoService.class));
         Setor setor = BeanUtils.instantiateClass(Setor.class);
         ReflectionTestUtils.setField(setor, "id", 1L);
         ReflectionTestUtils.setField(setor, "nome", "Setor de teste");

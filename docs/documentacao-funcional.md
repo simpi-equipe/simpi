@@ -2,8 +2,9 @@
 
 ## Estado do código documentado
 
-O código de referência desta atualização é a entrega de consultas e Swagger,
-commit `4beaffb`. O quadro descreve o checkout dessa entrega, sem afirmar
+O código de referência inclui a entrega de consultas e Swagger,
+commit `4beaffb`, e a evolução local de criação HTTP e seed de desenvolvimento.
+O quadro descreve esse checkout, sem afirmar
 integração à main, situação atual do remoto, aprovação de CI ou disponibilidade
 em deploy. Para esses estados é necessária uma verificação específica.
 
@@ -13,12 +14,16 @@ em deploy. Para esses estados é necessária uma verificação específica.
 | Seletores de cadastros | Consultas implementadas | GET /api/setores, /api/localizacoes e /api/usuarios |
 | Bens e transferências | Pesquisa, detalhe e histórico implementados | GET /api/bens, /api/bens/{id} e /api/bens/{id}/transferencias |
 | Consultas de solicitações | Pesquisa, visões, paginação e detalhe implementados | GET /api/solicitacoes e /api/solicitacoes/{id} |
-| Criação, aprovação, recusa, cancelamento, envio e recebimento | Implementados nos services | Controllers dessas operações permanecem pendentes |
+| Criação de solicitações | Service implementado; COMUM e ADMINISTRADOR seguem as duas etapas de aprovação | POST /api/solicitacoes, com 201 e Location |
+| Aprovação, recusa, cancelamento, envio e recebimento | Implementados nos services | Controllers dessas ações permanecem pendentes |
+| Cadastros de demonstração | Seed optativo no perfil seed-desenvolvimento; senha externa e BCrypt | Sem cadastro público ou rota de seed |
 | Erros | Advice MVC/negócio e handlers de segurança implementados | Envelope e códigos do contrato |
 | Ferramentas | springdoc 3.2.0 e coleção Insomnia | Swagger UI e documento OpenAPI disponíveis quando a aplicação desse checkout estiver iniciada |
 
 A persistência inclui migrations V1 e V2; Hibernate apenas valida o esquema.
-Não há cadastro público, seed automático ou conta de demonstração embutida.
+Não há cadastro público ou conta de demonstração habilitada por padrão.
+O [seed optativo](seed-desenvolvimento.md) prepara cadastros fictícios em banco
+local de desenvolvimento, sem solicitações e sem alterar as migrations.
 O contrato lista também operações futuras: constar no catálogo não comprova
 que o respectivo Controller esteja implementado.
 
@@ -95,6 +100,34 @@ validar a API manualmente pelo Swagger.
 | Controllers de consulta da entrega 4beaffb | 57 casos MVC aprovados nas execuções da entrega, com services mockados e cadeia real de segurança. |
 | OpenAPI da entrega 4beaffb | 13 casos aprovados, incluindo segurança por operação, ocultação do principal, parâmetros e schemas. |
 | Integração da entrega de Controllers/Swagger | Não executada nessa entrega; resultados históricos de integração não são uma nova execução dela. |
+| Criação HTTP e seed, 08/11/2026 — checkout local | 100 testes unitários/MVC/OpenAPI nas seis classes selecionadas e 28 de integração nas classes CriacaoSolicitacaoServiceIT, CriacaoSolicitacaoHttpIT e SeedDesenvolvimentoIT, sem falhas, erros ou testes ignorados. Execuções Maven concluídas com BUILD SUCCESS; não representam toda a suíte nem aprovação de CI. |
+
+Na evolução de criação e seed, os 100 casos selecionados correspondem a
+ContratoOpenApiTest (14), SeedDesenvolvimentoTest (10),
+SolicitacaoConsultaControllerTest (17), SolicitacaoCriacaoControllerTest (19),
+BemConsultaControllerTest (28) e CadastroConsultaControllerTest (12).
+Os 10 testes unitários de seed foram repetidos após a organização interna da
+carga, sem somar a repetição ao total. A integração cobriu 22 casos do service,
+3 de criação/consulta/conflito HTTP com segurança e banco reais e 3 da carga.
+Os casos de carga usaram rollback; o perfil público do seed permaneceu
+bloqueado em simpi_test. O banco de desenvolvimento não foi populado nesta
+validação. O roteiro manual está no [guia do seed](seed-desenvolvimento.md).
+
+### Validação manual de criação e seed — 08/11/2026
+
+Após a validação automatizada, o seed foi executado explicitamente no banco
+local simpi_dev. Foram criados 3 setores, 7 usuários, 3 localizações e 6 bens;
+os logins das sete contas fictícias foram validados. A senha foi gerada na
+execução e entregue em arquivo local fora do repositório, sem incluir tokens
+ou credenciais nesta documentação.
+
+No Swagger atualizado, a chamada sem token retornou 401 NAO_AUTENTICADO.
+Com a conta ADMINISTRADOR de demonstração, a criação para DEMO-ORIGEM-1
+retornou 201 e Location /api/solicitacoes/1. O pedido SOL-2026-0001 iniciou em
+AGUARDANDO_GESTOR_AREA, com aprovação pendente para o gestor de DEMO-AREA e
+evento CRIACAO. A consulta do detalhe retornou 200; a repetição do POST
+retornou 409 BEM_COM_SOLICITACAO_EM_ANDAMENTO. O pedido de demonstração
+permaneceu ativo; esta validação não executou aprovação, envio ou recebimento.
 
 Os contextos de consulta e OpenAPI usam `@TestConfiguration` com carregamento
 explícito, evitando descoberta automática de seus mocks nos testes de integração.
@@ -152,10 +185,11 @@ não são uma lista de trabalho para criar novamente as migrations já aplicadas
 5. **Concorrência — implementada:** a V2 contém índice único parcial por bem
    ativo e unicidade de aprovação por solicitação/etapa. Criação, decisões e
    demais transições estão nos services, com proteções de estado, concorrência
-   e transação. Os Controllers HTTP de criação e ações permanecem pendentes.
-6. **Perfil administrador — definição pendente:** abertura de solicitações por
-   ADMINISTRADOR não foi definida. Consulta global não concede automaticamente
-   permissões operacionais.
+   e transação. O Controller HTTP de criação está implementado; os das ações permanecem pendentes.
+6. **Perfil administrador — abertura aprovada:** ADMINISTRADOR pode abrir
+   solicitações seguindo o fluxo de COMUM: gestor do setor do solicitante e,
+   depois, gestor do setor de origem do bem. Consulta global não concede
+   automaticamente permissão de aprovação ou dispensa de etapas.
 
 Não reabrir decisões implementadas sem nova aprovação. Não ampliar o MVP com
 CRUDs, integrações ou recursos não previstos.
