@@ -1,35 +1,25 @@
-# Backend com Docker
+# Execução local e testes do backend
+
+Este guia descreve como executar o código do checkout. A presença dos arquivos
+não comprova integração à main, aprovação do CI ou disponibilidade em deploy.
+Consulte o [estado do código documentado](documentacao-funcional.md#estado-do-código-documentado)
+e o [contrato v1.1](contratos-api-v1.1.md) para escopo e regras.
 
 ## Pré-requisitos
 
-- Docker instalado e em execução, com suporte a contêineres Linux.
+- Execute os comandos a partir da raiz do repositório.
+- Docker Desktop em execução, com contêineres Linux e Docker Compose.
 - Acesso à internet para baixar imagens e dependências.
-- Execute todos os comandos abaixo na raiz do repositório.
+- JDK 21 para IntelliJ, Maven local ou JShell. A execução inteiramente por Docker
+  usa o JDK da imagem de build e não exige Java/Maven instalados no Windows.
+- Os exemplos de entrada com `Read-Host -MaskInput` exigem PowerShell 7.
 
-- Para executar o backend, inicie também o PostgreSQL local conforme
-  os comandos abaixo. A construção da imagem não exige banco.
-- O arquivo .env contém credenciais locais e não deve ser versionado.
+O Compose atual define somente os serviços de banco. O backend em contêiner
+é construído pelo [Dockerfile](../backend/Dockerfile) e iniciado com `docker run`.
 
-Java e Maven locais não são necessários: a imagem usa Java 21
-e o Maven Wrapper para compilar e verificar o projeto.
+## Preparar o ambiente
 
-## Construir a imagem
-
-```powershell
-docker build -t simpi-backend:local ./backend
-```
-
-O contexto de construção é `backend`. O `.dockerignore` exclui,
-entre outros arquivos, `target/`, logs e arquivos `.env`.
-
-## Preparar o PostgreSQL local
-
-PostgreSQL 18 é a versão escolhida para o ambiente local e o CI.
-A versão disponível no futuro projeto Supabase ainda deverá ser
-conferida antes da integração remota.
-
-Na raiz do repositório, copie o exemplo somente se ainda não existir
-um .env; preserve qualquer configuração local existente:
+Copie o [modelo](../.env.example) somente se o arquivo local ainda não existir:
 
 ```powershell
 if (-not (Test-Path -LiteralPath .env)) {
@@ -37,175 +27,340 @@ if (-not (Test-Path -LiteralPath .env)) {
 }
 ```
 
-Inicie o banco e aguarde o healthcheck:
+Revise o arquivo local sem publicar seus valores. Senhas, chaves, tokens e hashes
+não devem ser commitados. As variáveis têm as seguintes responsabilidades:
+
+| Variável | Uso |
+| --- | --- |
+| POSTGRES_DB | Nome do banco de desenvolvimento criado pelo serviço postgres |
+| POSTGRES_USER / POSTGRES_PASSWORD | Conta do PostgreSQL; também usadas pelo backend |
+| POSTGRES_PORT | Porta publicada no Windows; padrão 5432 |
+| POSTGRES_TEST_PASSWORD | Senha exclusiva do serviço postgres-test; mantenha definida no ambiente do Compose |
+| DB_URL | JDBC do banco que o backend deve usar; depende do modo de execução |
+| JWT_SECRET | Chave própria, Base64 de pelo menos 32 bytes aleatórios |
+
+Spring Boot não lê `.env` automaticamente. O Compose o usa para interpolação;
+o backend em contêiner recebe as variáveis por `--env-file`. No IntelliJ ou em
+Java local, configure o ambiente do processo explicitamente.
+
+As credenciais e o nome do PostgreSQL são aplicados pela imagem quando o volume
+está vazio. Alterar o `.env` não reconfigura um banco já inicializado. Preserve
+os valores compatíveis com o volume existente; não remova volumes para corrigir
+credenciais ou conflitos de porta.
+
+## Configurar JWT
+
+Substitua o placeholder de JWT_SECRET por uma chave própria. Para gerar Base64
+de 32 bytes aleatórios no PowerShell, quando for preparar seu ambiente:
+
+```powershell
+$chaveJwt = New-Object byte[] 32
+$gerador = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+    $gerador.GetBytes($chaveJwt)
+    [Convert]::ToBase64String($chaveJwt)
+} finally {
+    $gerador.Dispose()
+}
+```
+
+Copie o resultado apenas para o ambiente local. Não há chave operacional neste
+guia nem fallback de produção. Não reutilize chaves públicas de fixtures/CI,
+não use texto arbitrário como Base64 e não reutilize a chave local em produção.
+Uma chave ausente, inválida ou curta impede a inicialização da autenticação.
+
+A configuração `jwt.expiration` está em milissegundos; o padrão em
+[application.properties](../backend/src/main/resources/application.properties)
+é `3600000`, equivalente a 60 minutos. O campo `expiresIn` do login está em
+segundos: `3600` no padrão. É prazo desde a emissão, não de inatividade.
+JWT_EXPIRATION pode sobrescrever essa propriedade no ambiente do backend;
+a mesma unidade de milissegundos se aplica.
+
+## Bancos e portas
+
+| Uso | Destino do cliente | Banco |
+| --- | --- | --- |
+| Backend em Docker | postgres:5432, na rede simpi-local_default | Valor local de POSTGRES_DB |
+| IntelliJ/Java no Windows | 127.0.0.1 e POSTGRES_PORT, padrão 5432 | O mesmo banco de desenvolvimento |
+| Integração no Windows | 127.0.0.1:5433 | Exclusivamente simpi_test |
+| API no Windows | http://127.0.0.1:8080 | — |
+
+O [Compose](../compose.yaml) publica os bancos apenas em loopback e mantém
+volumes separados: postgres_data e postgres_test_data. Dentro da rede Docker,
+o PostgreSQL continua na porta 5432 mesmo quando POSTGRES_PORT muda no Windows.
+Não aponte integração para o banco de desenvolvimento.
+
+Para iniciar o banco e aguardar o healthcheck:
 
 ```powershell
 docker compose up -d --wait postgres
 ```
 
-Os dados persistem no volume postgres_data. Para parar os serviços
-preservando os dados:
+## Banco em Docker e backend no IntelliJ
+
+1. Prepare o ambiente e a chave JWT; inicie o serviço postgres.
+2. Abra o módulo backend no IntelliJ, use JDK 21 e carregue o projeto Maven.
+3. Na Run Configuration de BackendApplication, defina DB_URL, POSTGRES_USER,
+   POSTGRES_PASSWORD e JWT_SECRET com seus valores locais.
+4. Para DB_URL use `jdbc:postgresql://127.0.0.1:<porta-publicada>/<banco-local>`.
+   Não use o hostname postgres para o processo Java no Windows.
+5. Execute BackendApplication e aguarde a mensagem `Started BackendApplication`.
+
+O IntelliJ não herda automaticamente o `.env` nem as variáveis definidas em
+outro terminal. Reinicie o processo Java após alterar sua Run Configuration.
+
+Como alternativa ao IntelliJ, em PowerShell 7, ajustando porta e banco:
 
 ```powershell
-docker compose down
+$env:DB_URL = "jdbc:postgresql://127.0.0.1:<porta-publicada>/<banco-local>"
+$env:POSTGRES_USER = Read-Host "Usuário do banco local"
+$env:POSTGRES_PASSWORD = Read-Host -MaskInput "Senha do banco local"
+$env:JWT_SECRET = Read-Host -MaskInput "Chave Base64 própria"
+.\backend\mvnw.cmd -f backend/pom.xml spring-boot:run
 ```
 
-Alterar usuário, senha ou nome do banco no .env não reconfigura
-um volume já inicializado. O usuário criado pela imagem é
-administrador deste banco local; não reutilize as credenciais
-em ambientes remotos.
+Execute apenas uma instância do backend na porta 8080.
 
-O Compose lê .env para interpolação. O backend recebe essas
-variáveis pelo argumento --env-file; Spring Boot não lê esse
-arquivo automaticamente.
+## Banco e backend em Docker
 
-O DB_URL do exemplo usa postgres, nome acessível na rede
-simpi-local_default. Para executar Java diretamente na máquina,
-exporte as variáveis no processo e use 127.0.0.1 e a porta publicada.
-
-## Executar
-
-Se houver um contêiner da validação anterior criado com `--rm`,
-pare-o antes; ele será removido automaticamente. Depois execute
-o comando abaixo para criar o contêiner persistente.
+No `.env` usado pelo contêiner, DB_URL deve apontar para
+`jdbc:postgresql://postgres:5432/<banco-local>`, coerente com POSTGRES_DB.
+Prepare a chave JWT e inicie o banco antes do backend.
 
 ```powershell
+docker build -t simpi-backend:local ./backend
 docker run -d --name simpi-backend --network simpi-local_default --env-file .env -p 127.0.0.1:8080:8080 simpi-backend:local
 ```
 
-O backend fica acessível em `http://127.0.0.1:8080`, somente
-pela máquina local.
+O contexto é backend. O [.dockerignore](../backend/.dockerignore) exclui target,
+logs, arquivos de IDE e `.env`. O build executa Maven `verify` sem o perfil
+integration: roda testes unitários/MVC/OpenAPI, mas não testes `*IT` nem banco externo.
 
-A inicialização já foi validada manualmente, com Tomcat na porta
-8080 e a mensagem `Started BackendApplication`.
+O Flyway aplica migrations pendentes na inicialização; Hibernate somente valida
+o esquema. Migrations não fornecem usuários de demonstração ou seed automático.
 
-A estrutura inicial ainda não implementa a API de negócio.
-Uma resposta HTTP 404 na raiz não indica, por si só, falha
-na inicialização.
-
-## Consultar logs
+### Logs, parada e reinício
 
 ```powershell
 docker logs -f simpi-backend
 ```
 
-Use Ctrl+C para sair do acompanhamento; o contêiner continua
-em execução.
+Aguarde `Started BackendApplication`. Ctrl+C encerra apenas o acompanhamento.
+A raiz / não é um endpoint de negócio; seu status isolado não comprova
+inicialização nem disponibilidade das consultas autenticadas.
 
-## Parar e iniciar novamente
+Para parar e retomar mantendo contêineres e volumes:
 
 ```powershell
 docker stop simpi-backend
+docker compose stop postgres
+
+docker compose up -d --wait postgres
 docker start simpi-backend
 ```
 
-## Reconstruir após alterações
+### Recriar após mudar código ou variáveis
 
-Reconstrua a imagem e recrie o contêiner para aplicar as mudanças:
+Se o código ou as dependências mudaram, reconstrua a imagem. Se somente o
+`.env` do backend mudou, reutilize a imagem e recrie apenas o contêiner.
+
+Para um contêiner existente que será substituído:
 
 ```powershell
-docker build -t simpi-backend:local ./backend
 docker stop simpi-backend
 docker rm simpi-backend
 docker run -d --name simpi-backend --network simpi-local_default --env-file .env -p 127.0.0.1:8080:8080 simpi-backend:local
 ```
 
-A remoção acima exclui o contêiner anterior. Apenas reiniciá-lo
-não aplica a nova imagem.
+Essa remoção afeta somente o contêiner do backend, não os volumes do banco.
+`docker start` não adota uma nova imagem nem relê o `.env`.
+Se precisar reconstruir, execute o `docker build` mostrado acima antes da recriação.
 
-## Problemas comuns
+## Swagger e OpenAPI
 
-### Porta 8080 ocupada
+Com o backend iniciado, acesse:
 
-Pare o serviço que ocupa a porta ou publique em outra porta local:
+- Interface: http://127.0.0.1:8080/swagger-ui/index.html
+- Documento JSON: http://127.0.0.1:8080/v3/api-docs
 
-```powershell
-docker run -d --name simpi-backend --network simpi-local_default --env-file .env -p 127.0.0.1:8081:8080 simpi-backend:local
+1. Execute POST /api/auth/login com e-mail e senha de um usuário ativo existente.
+2. Copie somente accessToken da resposta.
+3. Em Authorize, cole o token sem escrever Bearer; o esquema HTTP Bearer inclui o prefixo.
+4. Confira GET /api/auth/me e execute as consultas desejadas.
+
+O login é público. /me e as oito consultas exigem Bearer; os endereços da
+documentação já estão liberados na configuração de segurança. O principal
+autenticado não é um parâmetro ou corpo de entrada. Services continuam
+recarregando e revalidando o usuário no banco.
+
+Em 401, obtenha um novo token quando aplicável. Em 403, confira perfil e
+permissões; repetir o login com o mesmo perfil não concede acesso.
+Parâmetros, padrões, DTOs e códigos públicos seguem o
+[contrato](contratos-api-v1.1.md). As rotas de criação e ações catalogadas
+no contrato ainda não têm Controllers neste checkout.
+
+## Coleção Insomnia
+
+Importe por Import → File a
+[coleção de consultas](testes-manuais/insomnia/simpi-consultas.json).
+Ela contém 33 requisições em cinco pastas numeradas.
+
+No ambiente base, ajuste url_base e preencha email/senha com uma conta local.
+Execute o login e copie accessToken para token, sem Bearer. A captura do token
+é manual. Nas consultas seguintes, preencha setorId, localizacaoId, bemId e
+solicitacaoId com IDs realmente retornados pelo seu banco.
+
+Siga as descrições e a ordem das pastas. Casos de GESTOR/ADMINISTRADOR exigem
+contas desses perfis e tokens correspondentes; não execute toda a coleção
+como se todos os cenários esperassem sucesso para o mesmo usuário.
+O exemplo idInexistente deve ser confirmado como ausente no banco.
+
+## Preparar dados locais
+
+Não há cadastro público, conta embutida no código ou seed automático. Um banco
+migrado pode não ter usuários; nesse caso o login exige uma carga local explícita.
+Não use fixtures de integração como rotina de carga no banco de desenvolvimento.
+
+A [preparação aprovada do ciclo setor/gestor](documentacao-funcional.md#preparação-do-ciclo-setor-e-gestor)
+continua sendo a referência. Para um banco sem cadastros, o mínimo para testar
+um COMUM é um setor, um GESTOR de apoio do próprio setor e o usuário COMUM.
+Se já existir setor válido, avalie seu reaproveitamento antes de criar outro.
+
+Antes de qualquer inserção, confirme localmente o destino do backend sem imprimir
+credenciais, identifique banco/schema e verifique migrations, código do setor e
+e-mails pretendidos. Use um cliente conectado ao serviço postgres de desenvolvimento,
+não ao postgres-test. Consultas iniciais, sem senhas ou hashes:
+
+```sql
+SELECT current_database(), current_schema();
+SELECT version, success FROM flyway_schema_history ORDER BY installed_rank;
+SELECT id, codigo, gestor_id, ativo FROM setor ORDER BY id;
 ```
 
-Nesse caso, acesse `http://127.0.0.1:8081`.
-
-### Nome de contêiner em uso
-
-Confira os contêineres existentes:
+Gere hashes com o `BCryptPasswordEncoder` usado pela aplicação. Sem alterar o
+projeto, obtenha o classpath com o Maven e abra JShell usando JDK 21:
 
 ```powershell
-docker ps -a
+.\backend\mvnw.cmd -f backend/pom.xml dependency:build-classpath "-DincludeScope=runtime"
+jshell --class-path "<classpath informado pelo Maven>"
 ```
 
-Para reutilizar o contêiner parado:
+No JShell, use `/set feedback silent` para evitar eco automático de valores e
+`new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()`:
+gere `encode(senhaLocal)` e confirme `matches(senhaLocal, hashGerado)` antes da carga.
+Use uma senha de desenvolvimento escolhida localmente para o COMUM e uma senha
+aleatória para o gestor de apoio; não exiba nem versione esses valores.
+Hashes sintéticos das fixtures não são credenciais de login garantidas.
 
-```powershell
-docker start simpi-backend
+O modelo abaixo é para psql. Defina previamente, somente na sessão local, as
+variáveis codigo_setor, nome_setor, nome_gestor, email_gestor, hash_gestor,
+nome_usuario, email_usuario e hash_usuario com os valores locais preparados.
+Não substitua os parâmetros por dados operacionais em arquivos versionados.
+As variáveis hash_gestor/hash_usuario devem conter hashes BCrypt verificados.
+
+```sql
+\set ON_ERROR_STOP on
+BEGIN;
+
+WITH identificadores AS (
+    SELECT nextval('sequencia_setor') AS setor_id,
+           nextval('sequencia_usuario') AS gestor_id
+),
+novo_setor AS (
+    INSERT INTO setor (id, codigo, nome, gestor_id, ativo)
+    SELECT setor_id, :'codigo_setor', :'nome_setor', gestor_id, TRUE
+    FROM identificadores
+    RETURNING id, gestor_id
+),
+novo_gestor AS (
+    INSERT INTO usuario (id, nome, email, senha_hash, perfil, setor_id, ativo)
+    SELECT gestor_id, :'nome_gestor', :'email_gestor', :'hash_gestor',
+           'GESTOR', id, TRUE
+    FROM novo_setor
+    RETURNING setor_id
+)
+INSERT INTO usuario (nome, email, senha_hash, perfil, setor_id, ativo)
+SELECT :'nome_usuario', :'email_usuario', :'hash_usuario', 'COMUM', setor_id, TRUE
+FROM novo_gestor
+RETURNING id, perfil, setor_id, ativo;
+
+COMMIT;
 ```
 
-Para substituí-lo pela imagem atual, use os comandos de parada,
-remoção e execução da seção de reconstrução.
+Os IDs vêm das sequências existentes; o COMUM usa o default de usuario.id.
+A FK setor.gestor_id permanece obrigatória e é verificada no commit.
+Perfil GESTOR e pertencimento ao setor precisam ser respeitados também na escrita
+SQL, pois a FK sozinha não garante essas condições. Em qualquer erro, interrompa,
+encerre/reverta a transação e diagnostique antes de repetir; não repita a carga
+automaticamente. A carga não altera o esquema ou registros existentes.
+
+Após o commit, confira apenas IDs, nomes, perfis, vínculos e atividade. Valide o
+login da conta COMUM no Swagger e confira /me com o token. Sem bens ou pedidos
+preparados, listas vazias são válidas; detalhes e históricos com sucesso exigem
+dados adicionais, fora dessa carga mínima.
 
 ## Testes
 
-Todos os comandos abaixo partem da raiz do repositório.
-Os comandos Maven exigem JDK 21 instalado na máquina.
-
-Testes unitários, sem banco:
+Os comandos Maven locais exigem JDK 21. Testes unitários, MVC e OpenAPI usam
+`*Test`/`*Tests` e não exigem banco externo. Os testes dos Controllers de consulta
+e do OpenAPI usam services mockados e a cadeia real de segurança; os testes do
+advice também incluem cenários standalone. Testes `*IT` dependem do perfil integration.
 
 ```powershell
 .\backend\mvnw.cmd -f backend/pom.xml test
+.\backend\mvnw.cmd -f backend/pom.xml verify
 ```
 
-Para integração local, inicie o PostgreSQL exclusivo de testes:
+Para integração, prepare o serviço exclusivo e, em outro terminal PowerShell 7,
+configure o banco de testes e uma chave JWT própria:
 
 ```powershell
 docker compose --profile integration up -d --wait postgres-test
-```
-
-Esse serviço usa simpi_test na porta local 5433 e o volume próprio
-postgres_test_data. Ele é separado do banco de desenvolvimento
-simpi_dev. Não há rotinas de exclusão ou limpeza de dados.
-
-Execute o Maven em um terminal PowerShell exclusivo para testes,
-usando os valores locais correspondentes ao .env:
-
-```powershell
 $env:DB_URL = "jdbc:postgresql://127.0.0.1:5433/simpi_test"
 $env:POSTGRES_USER = "simpi_test"
-$env:POSTGRES_PASSWORD = "simpi_test_only"
+$env:POSTGRES_PASSWORD = Read-Host -MaskInput "Senha definida em POSTGRES_TEST_PASSWORD"
+$env:JWT_SECRET = Read-Host -MaskInput "Chave Base64 própria para o processo de teste"
 .\backend\mvnw.cmd -f backend/pom.xml verify -Pintegration
 ```
 
-A senha deve acompanhar qualquer personalização de
-POSTGRES_TEST_PASSWORD no .env. Use outro terminal para executar
-o backend de desenvolvimento, preservando suas variáveis.
+Use terminais separados para desenvolvimento e integração. O serviço de testes
+usa volume próprio; a senha deve acompanhar sua configuração local. A proteção
+dos testes aceita somente PostgreSQL local, banco exatamente simpi_test e os
+formatos de URL aprovados. URLs alternativas de Flyway/Hikari/JNDI, parâmetros,
+credenciais na URL e múltiplos hosts são bloqueados. Execução remota exige revisão
+explícita dessa proteção. Fixtures são sintéticas; alguns cenários comprovam commit,
+outros usam rollback. Não há limpeza automática de registros preexistentes.
 
-Os testes de integração usam nomes *IT e verificam PostgreSQL
-e Flyway. Os unitários usam *Test ou *Tests e não acessam banco.
+No Windows, se for necessário executar Maven pelo Git Bash, substitua a chamada
+do wrapper por `& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd backend && ./mvnw test'`
+ou pelo objetivo Maven correspondente. Ajuste o caminho se o Git estiver instalado
+em outro local. Em ambientes que exigem certificados do Windows, as opções JVM
+`-Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NUL` podem ser
+acrescentadas a MAVEN_OPTS somente nesse processo, preservando e restaurando o valor
+anterior. Não desative TLS nem a validação de certificados.
 
-Atualmente, verify sem o perfil integration compila e empacota
-o backend, mas não executa o teste de inicialização reclassificado
-como BackendApplicationIT. Ainda não existem testes unitários
-de negócio. O comando verify -Pintegration executa também os
-testes de integração e exige o PostgreSQL exclusivo de testes.
+### Validação manual e evidências
 
-O build da imagem executa verify sem o perfil integration e não
-exige banco externo. O CI ativa esse perfil com um PostgreSQL
-temporário, separado dos bancos locais.
+Testes automatizados verificam cenários codificados; não demonstram um deploy.
+Os [resultados históricos](documentacao-funcional.md#evidências-de-validação)
+identificam entregas e limitações, sem garantir execuções futuras.
 
-Flyway controla as migrations em backend/src/main/resources/db/migration.
-A V1 e os mapeamentos das quatro entidades da fundação patrimonial estão
-escritos. Hibernate apenas valida o esquema. A nova cobertura de integração
-inclui aplicação da V1, JPA, relacionamentos, restrições e rollback. Na
-validação manual informada, `verify -Pintegration` concluiu 20 testes, sem
-falhas ou erros, com BUILD SUCCESS. A V1 foi aplicada com sucesso no PostgreSQL.
+Nos testes manuais, registre o status e o corpo realmente recebidos. Um campo
+bloqueado pelo Swagger antes do envio não demonstra resposta HTTP 400:
+use um cliente que envie o valor inválido, como o Insomnia, para exercitar o backend.
+Diferencie array/página vazia de recurso inexistente. Não declare sucesso de
+detalhes/históricos quando faltarem dados para essas chamadas.
+Não registre credenciais, hashes ou tokens como evidência.
 
-Antes de criar o DataSource ou executar Flyway, os testes Spring bloqueiam
-qualquer URL fora do formato PostgreSQL com host localhost, 127.0.0.1 ou
-[::1], banco exatamente simpi_test e porta opcional válida. Não aceitam
-parâmetros, credenciais na URL, múltiplos hosts ou URLs alternativas para
-Flyway/Hikari/JNDI. Não é necessário mudar as URLs local e CI existentes.
-Uma execução remota exige revisão explícita da proteção de testes.
+## Problemas comuns
 
-As fixtures são exclusivamente sintéticas. O teste de commit positivo
-mantém um cenário sintético no banco de testes; os demais cenários de dados
-usam rollback. Não há limpeza de dados preexistentes. Consulte as
-[decisões técnicas](documentacao-funcional.md#decisões-técnicas-da-fundação-patrimonial)
-para os limites do ciclo setor/gestor e das garantias no banco.
+- Porta 8080 ocupada: pare a execução concorrente no IntelliJ ou publique o
+  contêiner em outra porta, por exemplo `-p 127.0.0.1:8081:8080`, ajustando a URL dos clientes.
+- Nome simpi-backend em uso: confira `docker ps -a`; reutilize o contêiner somente
+  se imagem e variáveis ainda forem as desejadas. Caso contrário, siga a recriação.
+- Banco em outra porta no Windows: ajuste POSTGRES_PORT e a JDBC local;
+  no backend em Docker, mantenha postgres:5432.
+- Falha JWT na inicialização: confira presença, Base64 e tamanho da chave própria.
+- Login em banco vazio: siga a preparação local, sem criar autenticação provisória.
+- Supabase: a versão e os requisitos do futuro PostgreSQL remoto ainda dependem
+  de conferência específica; este guia trata do ambiente local.

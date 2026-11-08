@@ -1,15 +1,23 @@
 # Modelo de solicitações e movimentação
 
+As seções de evolução e revisão registram o estado das respectivas entregas na
+época, não uma afirmação permanente sobre o checkout ou a main. O
+[estado do código documentado](documentacao-funcional.md#estado-do-código-documentado)
+separa services, endpoints HTTP e pendências. As
+[instruções operacionais](docker-backend.md) são mantidas em uma única fonte.
+
 Decisões técnicas aprovadas para a evolução da fundação patrimonial. Referências:
 [dicionário](entidades-e-atributos.md), [enums](enums.md),
 [regras](regras-e-fluxos.md) e [API v1.1](contratos-api-v1.1.md).
 
 ## Escopo e migração
 
-A V2 acrescenta `solicitacao`, `aprovacao` e `evento_solicitacao`, sem modificar
-a V1 ou o contrato HTTP. Flyway continua responsável pelo esquema e Hibernate
-somente valida. Não há endpoints, autenticação, DTOs HTTP ou execução de ações
-do fluxo nesta entrega. Os repositories possuem somente `JpaRepository`.
+Na entrega de modelo da V2 registrada nesta seção, foram acrescentadas
+`solicitacao`, `aprovacao` e `evento_solicitacao`, sem modificar a V1 ou o
+contrato HTTP. Flyway continua responsável pelo esquema e Hibernate somente
+valida. Naquela etapa não havia endpoints, autenticação, DTOs HTTP ou execução
+de ações do fluxo; as entregas posteriores estão registradas cronologicamente
+abaixo. Os repositories possuem somente `JpaRepository`.
 
 A funcionalidade fica em `br.edu.simpi.solicitacao`, dividida em `model`
 (Solicitacao, Aprovacao, EventoSolicitacao e NumeroSolicitacao), `enums`
@@ -56,7 +64,7 @@ fornecê-la ao gerador; não deverá aceitar número ou data do cliente.
 
 Todos os instantes são `Instant` no Java e `TIMESTAMP WITH TIME ZONE` no banco.
 PostgreSQL preserva o instante, sem conservar o fuso original. A apresentação
-da futura API permanece ISO 8601 em UTC com `Z`; a sessão do banco pode exibir
+da API segue ISO 8601 em UTC com `Z`; a sessão do banco pode exibir
 outro fuso sem mudar o instante. A precisão de persistência é de microssegundos.
 SQL direto não recebe garantia de formato ou correspondência entre ano e data:
 essas validações pertencem à construção Java, além da unicidade no banco.
@@ -93,7 +101,11 @@ A proibição de editar/excluir eventos deverá ser respeitada pelos casos de us
   integralmente ausente ou preenchido. Isso não valida sequência temporal,
   estado correspondente ou existência de envio antes do recebimento.
 
-## Responsabilidades dos futuros casos de uso
+## Responsabilidades implementadas nos services
+
+As regras abaixo orientaram os casos de uso e foram implementadas nos services
+descritos nas seções de evolução posteriores. A abertura por ADMINISTRADOR
+continua sem definição aprovada.
 
 - Revalidar usuário ativo, permissões, perfil, setor atual e aprovador designado.
   Abertura por ADMINISTRADOR permanece indefinida e não é disponibilizada.
@@ -113,9 +125,9 @@ A proibição de editar/excluir eventos deverá ser respeitada pelos casos de us
 - Preservar consulta por setores históricos e mapear conflitos para os códigos
   existentes na API v1.1, sem expor pedido inacessível ao usuário.
 
-Não há triggers de transição, deduplicação de eventos, autenticação ou
-implementação dessas operações nesta etapa. Constraints por linha não garantem
-sozinhas a atomicidade entre as tabelas.
+Não há triggers de transição ou deduplicação automática de eventos. As operações
+e a revalidação do ator ficam nos services; constraints por linha não garantem,
+sozinhas, atomicidade entre tabelas.
 
 ## Validação manual e pendências
 
@@ -142,9 +154,11 @@ Falhas também podem deixar fixtures confirmadas. Sequências podem avançar.
 Validação manual informada pelo responsável: `verify -Pintegration` concluiu
 38 testes, zero falhas, zero erros e `BUILD SUCCESS`. O resultado é registrado
 conforme informado, sem nova execução de testes ou build para esta atualização.
-A validação corresponde à suíte executada nesta entrega. Implementação e testes
-dos futuros casos de uso, permissões e transições permanecem pendentes na frente
-do fluxo.
+A validação corresponde à suíte executada na entrega original do modelo. Naquela
+etapa, casos de uso, permissões e transições ainda estavam pendentes; as seções
+de evolução abaixo registram sua implementação posterior nos services. A exposição
+HTTP de criação e ações continua pendente, conforme o quadro atual da
+[documentação funcional](documentacao-funcional.md#estado-do-código-documentado).
 
 ## Evolução: criação de solicitações no service
 
@@ -482,10 +496,11 @@ Não foram identificadas abstrações ou infraestrutura dispensáveis que exijam
 simplificação. O mapeamento posicional das 17 colunas exige cuidado ao alterar
 a projeção; isso é um ponto de manutenção, sem mudança proposta nesta entrega.
 
-Nenhuma implementação foi alterada nesta revisão. Permanecem pendentes histórico
-de transferências, consultas de solicitações, Controllers, endpoints, integração
-com autenticação e tradução HTTP de `GESTOR_DESIGNADO_INVALIDO`. A limitação
-cadastral aprovada permanece válida. Não foram feitos stage, commit ou push.
+Na revisão histórica dessa entrega, estavam pendentes histórico de transferências,
+consultas de solicitações, Controllers, endpoints, integração com autenticação e
+tradução HTTP de `GESTOR_DESIGNADO_INVALIDO`. As evoluções posteriores e o quadro
+atual da documentação funcional distinguem o que já foi implementado. A limitação
+cadastral aprovada permanece válida.
 
 ## Evolução: tratamento de erros HTTP — 05/11/2026
 
@@ -503,7 +518,7 @@ permanecem preservados.
 `REFERENCIA_NAO_ENCONTRADA` usa `404 / RECURSO_NAO_ENCONTRADO`.
 Os demais motivos seguem o status e código homônimos do contrato.
 
-A camada HTTP possui somente `erro/dto/ErroResponse`,
+Na entrega original de tratamento de erros, a camada HTTP adicionou `erro/dto/ErroResponse`,
 `erro/dto/ErroCampoResponse` e `erro/controller/TratamentoErrosControllerAdvice`,
 sob `br.edu.simpi`. Não cria hierarquia de exceções nem catálogo adicional.
 O advice herda o tratamento MVC do Spring e padroniza falhas de entrada em 400,
@@ -515,11 +530,11 @@ causas e mensagens técnicas não são publicados. `solicitacaoExistenteId` é o
 
 404 de rota, 405, 406 e 415 mantêm status, headers e tratamento padrão do Spring.
 A definição de seus corpos permanece pendente para a revisão dos endpoints.
-Na futura integração, filtros/handlers de segurança usarão os mesmos DTOs.
-Antes de ativar filtros ou segurança de métodos, revisar o fallback do advice
-para deixar as exceções de segurança seguirem ao mecanismo responsável, sem
-convertê-las em 500 ou duplicar respostas. Não há tratamento antecipado de
-Spring Security nesta entrega.
+O acordo original previa integrar filtros/handlers de segurança com os mesmos
+DTOs e revisar o fallback do advice. Essa integração já está implementada no
+código documentado: exceções de segurança seguem à cadeia responsável, sem
+conversão em 500 ou resposta duplicada. A pendência histórica de integração está
+encerrada; as traduções de negócio aprovadas nesta seção permanecem preservadas.
 
 Os testes MVC usam MockMvc standalone e controllers registrados explicitamente
 apenas em `src/test`, com Bean Validation e sem contexto de banco. Cobrem a
@@ -558,6 +573,6 @@ as alterações; as strings sensíveis nos testes são fictícias e verificam su
 ocultação. Autenticação, migrations, dependências e endpoints de negócio
 permanecem fora das alterações.
 
-Continuam pendentes a padronização dos corpos de 404 de rota, 405, 406 e 415
-na revisão dos endpoints e a integração com segurança usando os mesmos DTOs,
-com revisão do fallback para não consumir exceções de segurança como 500.
+Continua pendente a definição dos corpos de 404 de rota, 405, 406 e 415 na revisão
+dos endpoints. A integração com segurança e a revisão do fallback já existem no
+código documentado, conforme a atualização da seção acima.

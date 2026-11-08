@@ -6,19 +6,18 @@ produzidos pela equipe.
 
 ## Estado atual
 
-A infraestrutura inicial do backend está configurada:
+O código deste checkout inclui:
 
-- Aplicação Spring Boot com suporte a validação, JPA e PostgreSQL.
-- Construção e execução do backend com Docker.
-- Bancos separados para desenvolvimento e integração.
-- Flyway com a primeira migration de Setor, Usuario, Localizacao e BemPatrimonial.
-- Hibernate configurado para validar o esquema, sem criar ou alterar tabelas.
-- Teste de integração e workflow de CI do backend.
+- Autenticação JWT: login e consulta de identidade em `/api/auth/me`.
+- Oito rotas GET de consulta de cadastros, bens, transferências e solicitações.
+- Swagger UI/OpenAPI com springdoc 3.2.0 e coleção Insomnia para testes manuais.
+- Services de criação e ações de solicitações; seus Controllers HTTP permanecem pendentes.
+- Migrations V1 e V2, Hibernate em validação e bancos separados para desenvolvimento e integração.
+- Testes unitários, MVC/OpenAPI e de integração, além dos workflows de CI.
 
-A fundação patrimonial possui entidades JPA, repositories e testes de
-integração para as quatro tabelas. A validação manual informada de
-`verify -Pintegration` concluiu 20 testes, sem falhas ou erros, com
-`BUILD SUCCESS`. Não há endpoints de negócio disponíveis.
+Este resumo descreve o código documentado; não comprova integração à `main`,
+execução bem-sucedida em outro ambiente ou disponibilidade em deploy.
+Veja o [estado e as evidências das entregas](docs/documentacao-funcional.md#estado-do-código-documentado).
 
 O frontend mínimo usa React com JavaScript e Vite, com uma página de
 identificação do SIMPI. Ele pode ser executado e compilado independentemente
@@ -89,7 +88,9 @@ simpi/
 │   ├── documentacao-funcional.md
 │   ├── entidades-e-atributos.md
 │   ├── enums.md
-│   └── regras-e-fluxos.md
+│   ├── modelo-solicitacoes-movimentacao.md
+│   ├── regras-e-fluxos.md
+│   └── testes-manuais/insomnia/simpi-consultas.json
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
@@ -129,161 +130,46 @@ Bibliotecas adicionais serão escolhidas pela pessoa responsável pelo frontend.
 
 ## Preparar o ambiente local
 
-Clone o repositório e entre na pasta do projeto:
-
-```powershell
-git clone https://github.com/simpi-equipe/simpi.git
-cd simpi
-```
-
-Crie o arquivo de ambiente a partir do [modelo versionado](.env.example),
-somente se o destino ainda não existir:
-
-```powershell
-if (-not (Test-Path -LiteralPath .env)) {
-    Copy-Item -LiteralPath .env.example -Destination .env
-}
-```
-
-Revise os valores do seu `.env` antes de iniciar os serviços.
-Preserve configurações existentes e use credenciais exclusivas
-para desenvolvimento.
-
-O arquivo real é ignorado pelo [.gitignore](.gitignore).
-Não force sua inclusão no Git nem publique credenciais em commits,
-documentação ou PRs.
-
-As credenciais de inicialização do PostgreSQL são aplicadas quando
-o volume está vazio. Alterar o arquivo de ambiente não reconfigura
-automaticamente um banco já inicializado.
+O [guia operacional do backend](docs/docker-backend.md) é a fonte principal
+para variáveis, comandos e diagnóstico. Comece pela
+[configuração JWT](docs/docker-backend.md#configurar-jwt); copiar o
+[modelo de ambiente](.env.example) não fornece uma chave pronta.
 
 ## Iniciar PostgreSQL e backend
 
-### Backend pelo Docker
+Escolha um modo de execução:
 
-Inicie o banco de desenvolvimento e aguarde o healthcheck:
+- [Banco em Docker e backend no IntelliJ](docs/docker-backend.md#banco-em-docker-e-backend-no-intellij).
+- [Banco e backend em Docker](docs/docker-backend.md#banco-e-backend-em-docker).
 
-```powershell
-docker compose up -d --wait postgres
-```
-
-Construa a imagem e crie o contêiner do backend:
-
-```powershell
-docker build -t simpi-backend:local ./backend
-docker run -d --name simpi-backend --network simpi-local_default --env-file .env -p 127.0.0.1:8080:8080 simpi-backend:local
-```
-
-O endereço local é http://127.0.0.1:8080. Uma resposta HTTP 404 na raiz
-não indica, por si só, falha de inicialização: ainda não há endpoint
-de negócio nesse endereço.
-
-Se o contêiner já existir, consulte o guia antes de criá-lo novamente.
-O [guia do backend com Docker](docs/docker-backend.md) explica logs,
-confirmação da inicialização, parada, reinício e reconstrução.
-
-### Backend diretamente pelo Java
-
-Com o banco de desenvolvimento saudável, use outro terminal PowerShell 7.
-Ajuste banco, usuário e porta conforme sua configuração local:
-
-```powershell
-$env:DB_URL = "jdbc:postgresql://127.0.0.1:5432/simpi_dev"
-$env:POSTGRES_USER = "simpi_dev"
-$env:POSTGRES_PASSWORD = Read-Host -MaskInput "Senha do banco de desenvolvimento"
-.\backend\mvnw.cmd -f backend/pom.xml spring-boot:run
-```
-
-O Spring Boot não lê `.env` automaticamente. O Compose o usa para
-interpolação; o backend em Docker recebe as variáveis pelo argumento
-de arquivo de ambiente; a execução pelo Java recebe as variáveis
-definidas no terminal.
-
-Execute apenas uma instância do backend na mesma porta.
+Spring Boot e IntelliJ não carregam `.env` automaticamente. O Compose lê o
+arquivo para interpolação; o backend em contêiner o recebe por `--env-file`.
+Configure as variáveis explicitamente no processo Java ou na Run Configuration.
 
 ## Bancos e portas
 
-| Uso | Serviço | Banco | Porta na máquina |
-| --- | --- | --- | --- |
-| Desenvolvimento | `postgres` | Configurado por `POSTGRES_DB`; exemplo `simpi_dev` | `POSTGRES_PORT`, padrão `5432` |
-| Integração local | `postgres-test` | `simpi_test` | `5433`, definida no Compose |
-| Backend | Contêiner `simpi-backend` ou Java local | — | `8080` por padrão |
+Veja a [tabela de endereços e portas](docs/docker-backend.md#bancos-e-portas).
+Dentro da rede Docker o banco usa `postgres:5432`; no Windows, use
+`127.0.0.1` e a porta publicada. Desenvolvimento e integração têm bancos
+e volumes separados; não use o banco de desenvolvimento para os testes de integração.
 
-Os bancos usam contêineres e volumes separados. Não aponte os testes
-de integração para o banco de desenvolvimento.
+## API e testes manuais
 
-As portas dos bancos são publicadas somente em `127.0.0.1`.
-Dentro da rede Docker, PostgreSQL continua na porta `5432`;
-o backend em contêiner usa `postgres:5432`.
-
-Se a porta de desenvolvimento estiver ocupada, escolha outra em
-`POSTGRES_PORT`, como `5434`, e execute novamente a inicialização
-do serviço. Clientes executados na máquina devem usar a mesma porta.
-
-A porta de integração é definida no [Compose](compose.yaml);
-se ela mudar, ajuste também a URL dos testes. Para conflitos na porta
-do backend ou no nome do contêiner, consulte
-[Problemas comuns](docs/docker-backend.md#problemas-comuns).
-Não remova bancos ou volumes para resolver conflitos de porta.
+- [Swagger e OpenAPI](docs/docker-backend.md#swagger-e-openapi): login, Authorize e consultas autenticadas.
+- [Coleção Insomnia](docs/docker-backend.md#coleção-insomnia): importação, ambiente e sequência de chamadas.
+- [Dados locais](docs/docker-backend.md#preparar-dados-locais): setor/gestor, usuário COMUM e BCrypt.
+- [Contrato v1.1](docs/contratos-api-v1.1.md): referência funcional de parâmetros, respostas e erros.
 
 ## Testes e build
 
-Os comandos Maven locais exigem JDK 21.
+Os comandos de [testes e build](docs/docker-backend.md#testes) distinguem
+unitários/MVC/OpenAPI, integração com PostgreSQL e validação manual.
+O Dockerfile executa `verify` sem o perfil `integration`: inclui os testes
+`*Test`/`*Tests`, mas não os `*IT` nem um banco externo.
 
-### Sem integração
-
-```powershell
-.\backend\mvnw.cmd -f backend/pom.xml test
-.\backend\mvnw.cmd -f backend/pom.xml verify
-```
-
-Os testes unitários futuros usarão nomes como `*Test` e `*Tests`.
-Atualmente não existem testes unitários de negócio.
-
-Sem o perfil de integração, a verificação compila e empacota o backend,
-mas não executa [BackendApplicationIT](backend/src/test/java/br/edu/simpi/BackendApplicationIT.java).
-O build do [Dockerfile](backend/Dockerfile) usa esse modo e não exige
-banco externo.
-
-### Integração com PostgreSQL
-
-Inicie o serviço exclusivo de testes:
-
-```powershell
-docker compose --profile integration up -d --wait postgres-test
-```
-
-Em um terminal PowerShell 7 exclusivo para testes:
-
-```powershell
-$env:DB_URL = "jdbc:postgresql://127.0.0.1:5433/simpi_test"
-$env:POSTGRES_USER = "simpi_test"
-$env:POSTGRES_PASSWORD = Read-Host -MaskInput "Senha definida em POSTGRES_TEST_PASSWORD"
-.\backend\mvnw.cmd -f backend/pom.xml verify -Pintegration
-```
-
-O perfil Maven `integration` executa testes com nomes `*IT`.
-A cobertura escrita verifica inicialização, aplicação da V1, validação do
-Flyway, mapeamentos JPA, perfis, referências, obrigatoriedade, unicidade,
-tamanhos e rollback. A validação manual informada de `verify -Pintegration`
-concluiu 20 testes, sem falhas ou erros, com `BUILD SUCCESS`; a V1 foi aplicada
-com sucesso no PostgreSQL de integração.
-
-Antes de criar os beans e executar Flyway, os testes Spring validam a URL:
-somente PostgreSQL com host `localhost`, `127.0.0.1` ou `[::1]` e banco
-exatamente `simpi_test`. URLs com parâmetros, múltiplos hosts, credenciais,
-portas inválidas ou formatos alternativos são bloqueadas. URLs separadas
-para Flyway, Hikari e JNDI também são bloqueadas. Execução remota exige
-revisão explícita da proteção, exclusiva dos testes.
-
-As fixtures são sintéticas e usam códigos exclusivos. O teste de commit
-válido mantém um cenário sintético no banco de testes para comprovar o
-fechamento real do ciclo setor/gestor; os demais cenários de dados usam
-rollback. Não existe rotina de limpeza ou exclusão de dados preexistentes.
-
-Use terminais separados para desenvolvimento e testes, evitando reutilizar
-as variáveis do banco errado. Veja também o
-[guia de testes](docs/docker-backend.md#testes).
+Resultados de execuções anteriores são evidências históricas, não garantia
+de sucesso do checkout atual. As limitações dos testes manuais estão no
+[resumo das validações](docs/documentacao-funcional.md#evidências-de-validação).
 
 ## O que o CI valida
 
@@ -291,7 +177,7 @@ O [workflow Backend CI](.github/workflows/backend-ci.yml):
 
 1. Obtém o código e configura Java 21.
 2. Inicia um PostgreSQL 18 temporário, separado dos bancos locais.
-3. Compila o backend, executa os testes de integração existentes
+3. Compila o backend, executa testes unitários/MVC/OpenAPI e os de integração existentes
    e gera o JAR usando o Maven Wrapper:
 
 ```bash
@@ -301,8 +187,9 @@ bash ./mvnw --batch-mode --no-transfer-progress verify -Pintegration
 Esse comando roda dentro da pasta [backend](backend/), conforme
 o diretório de trabalho definido no workflow.
 
-O workflow atual não constrói a imagem Docker, não faz deploy
-e não valida frontend ou funcionalidades de negócio.
+O workflow atual valida as regras cobertas pelos testes existentes. Não constrói
+a imagem Docker, não faz deploy nem valida o frontend. Um resultado de CI não
+substitui a validação manual da API ou a comprovação de um deploy.
 
 Ele roda em PRs destinados à `main`, em pushes para `main`,
 `chore/estrutura-inicial` e `chore/postgres-local`, e também permite
@@ -354,14 +241,13 @@ específica.
 ## Próximas etapas
 
 - Resolver e validar as pendências técnicas registradas na
-  [documentação funcional](docs/documentacao-funcional.md#pendencias-antes-das-migrations)
-  antes de implementar os objetos afetados.
-- Criar migrations e entidades das próximas entregas conforme aprovação.
-- Implementar regras de negócio e endpoints com testes adequados.
+  [documentação funcional](docs/documentacao-funcional.md#decisões-técnicas-e-pendências-funcionais).
+- Evoluir migrations e entidades somente quando a próxima entrega aprovada exigir.
+- Implementar os Controllers de criação e ações de solicitações, reutilizando os services existentes.
 - Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
   antes de planejar a conexão remota.
 
 A [documentação funcional](docs/documentacao-funcional.md) está disponível,
 com entidades, enums, fluxos, contratos da API e pendências técnicas.
-O guia operacional é [Backend com Docker](docs/docker-backend.md).
+O guia operacional é [Execução local e testes do backend](docs/docker-backend.md).
