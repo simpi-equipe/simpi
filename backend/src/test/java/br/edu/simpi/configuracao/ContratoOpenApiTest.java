@@ -72,6 +72,30 @@ class ContratoOpenApiTest {
     }
 
     @Test
+    void documentarCriacaoComCorpoSemIdentidadeEResposta201() throws Exception {
+        var documento = carregarDocumento();
+        var operacao = documento.at("/paths/~1api~1solicitacoes/post");
+        assertTrue(operacao.at("/security/0").has("bearerAuth"));
+        assertTrue(operacao.path("parameters").isMissingNode() || operacao.path("parameters").isEmpty());
+        assertEquals("#/components/schemas/CriarSolicitacaoRequest",
+                operacao.at("/requestBody/content/application~1json/schema/$ref").asString());
+        assertTrue(operacao.at("/requestBody/required").asBoolean());
+        var propriedades = documento.at("/components/schemas/CriarSolicitacaoRequest/properties");
+        assertEquals(5, propriedades.size());
+        for (String campo : List.of("bemId", "setorDestinoId", "localizacaoDestinoId", "responsavelDestinoId", "justificativa")) {
+            assertTrue(propriedades.has(campo), campo);
+        }
+        assertEquals(5, documento.at("/components/schemas/CriarSolicitacaoRequest/required").size());
+        assertEquals("#/components/schemas/SolicitacaoResponse",
+                operacao.at("/responses/201/content/application~1json/schema/$ref").asString());
+        assertTrue(operacao.at("/responses/201/headers").has("Location"));
+        for (String estado : List.of("400", "401", "403", "404", "409", "500")) {
+            assertEquals("#/components/schemas/ErroResponse",
+                    operacao.at("/responses/" + estado + "/content/application~1json/schema/$ref").asString());
+        }
+    }
+
+    @Test
     void documentarSegurancaPorOperacaoSemExporIdentidadeComoEntrada() throws Exception {
         var documento = carregarDocumento();
         assertEquals("SIMPI - API patrimonial", documento.at("/info/title").asString());

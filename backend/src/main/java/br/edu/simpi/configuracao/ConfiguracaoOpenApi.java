@@ -14,7 +14,8 @@ public class ConfiguracaoOpenApi {
         return new OpenAPI()
                 .info(new Info().title("SIMPI - API patrimonial").version("1.1")
                         .description("Execute o login e copie accessToken para Authorize, sem o prefixo Bearer. "
-                                + "Consultas exigem usuário ativo. Arrays vazios usam []; campos opcionais previstos "
+                                + "Consultas e criação exigem usuário ativo. Criação retorna 201 com Location. "
+                                + "Arrays vazios usam []; campos opcionais previstos "
                                 + "usam null; datas e horas são ISO 8601 em UTC, com Z."))
                 .components(new Components().addSecuritySchemes("bearerAuth", new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")

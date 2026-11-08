@@ -137,7 +137,8 @@ logs, arquivos de IDE e `.env`. O build executa Maven `verify` sem o perfil
 integration: roda testes unitários/MVC/OpenAPI, mas não testes `*IT` nem banco externo.
 
 O Flyway aplica migrations pendentes na inicialização; Hibernate somente valida
-o esquema. Migrations não fornecem usuários de demonstração ou seed automático.
+o esquema. Migrations não fornecem usuários de demonstração. Há um
+[seed optativo de desenvolvimento](seed-desenvolvimento.md), executado pelo backend no host.
 
 ### Logs, parada e reinício
 
@@ -188,7 +189,7 @@ Com o backend iniciado, acesse:
 3. Em Authorize, cole o token sem escrever Bearer; o esquema HTTP Bearer inclui o prefixo.
 4. Confira GET /api/auth/me e execute as consultas desejadas.
 
-O login é público. /me e as oito consultas exigem Bearer; os endereços da
+O login é público. /me, as oito consultas e a criação exigem Bearer; os endereços da
 documentação já estão liberados na configuração de segurança. O principal
 autenticado não é um parâmetro ou corpo de entrada. Services continuam
 recarregando e revalidando o usuário no banco.
@@ -196,19 +197,22 @@ recarregando e revalidando o usuário no banco.
 Em 401, obtenha um novo token quando aplicável. Em 403, confira perfil e
 permissões; repetir o login com o mesmo perfil não concede acesso.
 Parâmetros, padrões, DTOs e códigos públicos seguem o
-[contrato](contratos-api-v1.1.md). As rotas de criação e ações catalogadas
-no contrato ainda não têm Controllers neste checkout.
+[contrato](contratos-api-v1.1.md). A criação retorna 201 com Location;
+somente as rotas das ações ainda não têm Controllers neste checkout.
 
 ## Coleção Insomnia
 
 Importe por Import → File a
-[coleção de consultas](testes-manuais/insomnia/simpi-consultas.json).
-Ela contém 33 requisições em cinco pastas numeradas.
+[coleção de consultas e criação](testes-manuais/insomnia/simpi-consultas.json).
+Ela contém 35 requisições em seis pastas numeradas.
 
 No ambiente base, ajuste url_base e preencha email/senha com uma conta local.
 Execute o login e copie accessToken para token, sem Bearer. A captura do token
 é manual. Nas consultas seguintes, preencha setorId, localizacaoId, bemId e
 solicitacaoId com IDs realmente retornados pelo seu banco.
+Para a pasta de criação, preencha também setorDestinoId, localizacaoDestinoId
+e responsavelDestinoId. O POST cria dados; sua repetição para o mesmo bem
+retorna 409 enquanto houver solicitação em andamento.
 
 Siga as descrições e a ordem das pastas. Casos de GESTOR/ADMINISTRADOR exigem
 contas desses perfis e tokens correspondentes; não execute toda a coleção
@@ -217,8 +221,10 @@ O exemplo idInexistente deve ser confirmado como ausente no banco.
 
 ## Preparar dados locais
 
-Não há cadastro público, conta embutida no código ou seed automático. Um banco
-migrado pode não ter usuários; nesse caso o login exige uma carga local explícita.
+Não há cadastro público ou conta habilitada por padrão. Um banco migrado pode
+não ter usuários; o login exige uma carga local explícita. Para dados fictícios
+reproduzíveis, use o [seed de desenvolvimento](seed-desenvolvimento.md).
+O preparo manual abaixo permanece disponível para cadastros próprios.
 Não use fixtures de integração como rotina de carga no banco de desenvolvimento.
 
 A [preparação aprovada do ciclo setor/gestor](documentacao-funcional.md#preparação-do-ciclo-setor-e-gestor)

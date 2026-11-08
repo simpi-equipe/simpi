@@ -104,11 +104,12 @@ A proibição de editar/excluir eventos deverá ser respeitada pelos casos de us
 ## Responsabilidades implementadas nos services
 
 As regras abaixo orientaram os casos de uso e foram implementadas nos services
-descritos nas seções de evolução posteriores. A abertura por ADMINISTRADOR
-continua sem definição aprovada.
+descritos nas seções de evolução posteriores. ADMINISTRADOR pode abrir
+solicitações pelo fluxo de COMUM, com as duas etapas de aprovação.
 
 - Revalidar usuário ativo, permissões, perfil, setor atual e aprovador designado.
-  Abertura por ADMINISTRADOR permanece indefinida e não é disponibilizada.
+  ADMINISTRADOR inicia em GESTOR_AREA, pelo gestor de seu setor, e segue para
+  GESTOR_RESPONSAVEL, pelo gestor do setor de origem do bem.
 - Validar bem e destino ativos, responsável pertencente ao destino, justificativa
   não vazia e diferença entre origem e destino. Localização independe do setor.
 - Bloquear o bem e revalidar disponibilidade e origem ao abrir a solicitação.
@@ -157,7 +158,7 @@ conforme informado, sem nova execução de testes ou build para esta atualizaç�
 A validação corresponde à suíte executada na entrega original do modelo. Naquela
 etapa, casos de uso, permissões e transições ainda estavam pendentes; as seções
 de evolução abaixo registram sua implementação posterior nos services. A exposição
-HTTP de criação e ações continua pendente, conforme o quadro atual da
+HTTP de criação já está implementada; a exposição das ações continua pendente, conforme o quadro atual da
 [documentação funcional](documentacao-funcional.md#estado-do-código-documentado).
 
 ## Evolução: criação de solicitações no service

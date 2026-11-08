@@ -378,9 +378,10 @@ Pelo menos um dado de destino (setor, localização ou responsável) deve diferi
 | Solicitante | Primeiro estado |
 | --- | --- |
 | COMUM | AGUARDANDO_GESTOR_AREA |
+| ADMINISTRADOR | AGUARDANDO_GESTOR_AREA |
 | GESTOR | AGUARDANDO_GESTOR_RESPONSAVEL |
 
-Os fluxos de abertura apresentados nesta versão cobrem os perfis COMUM e GESTOR. Abertura por ADMINISTRADOR não foi definida; validar antes de disponibilizar essa ação para o perfil administrativo.
+ADMINISTRADOR pode abrir solicitações seguindo o mesmo fluxo de COMUM: aprovação pelo gestor do setor do solicitante e, depois, pelo gestor do setor de origem do bem. O perfil administrativo não dispensa etapas nem concede permissão de aprovação.
 
 ## Resposta
 

@@ -59,6 +59,7 @@ O desenho resume as ligações centrais. As referências adicionais de gestor, a
 | Ator / ação | Condição | Resultado |
 | --- | --- | --- |
 | Usuário COMUM cria | Bem e destino válidos | AGUARDANDO_GESTOR_AREA; primeira aprovação pendente e evento CRIACAO |
+| Usuário ADMINISTRADOR cria | Bem e destino válidos | Mesmo fluxo de COMUM: GESTOR_AREA e depois GESTOR_RESPONSAVEL |
 | Usuário GESTOR cria | Bem e destino válidos | AGUARDANDO_GESTOR_RESPONSAVEL; somente a etapa necessária é criada |
 | Gestor designado aprova GESTOR_AREA | Aprovação pendente e estado correspondente | AGUARDANDO_GESTOR_RESPONSAVEL; criar segunda aprovação pendente |
 | Gestor designado aprova GESTOR_RESPONSAVEL | Aprovação pendente e estado correspondente | APROVADA |
@@ -116,7 +117,7 @@ O gestor da primeira etapa é o designado para o setor do solicitante. O da segu
 - Todas as operações do catálogo exigem autenticação, exceto POST /api/auth/login.
 - Usuários autenticados consultam bens; pedidos ficam visíveis aos setores participantes e ao administrador conforme o contrato.
 - ADMINISTRADOR tem consulta global, sem receber automaticamente o direito de aprovar, enviar ou receber.
-- Abertura de solicitação por ADMINISTRADOR ainda não foi definida; não disponibilizar automaticamente.
+- ADMINISTRADOR pode abrir solicitações pelo mesmo fluxo de COMUM, com aprovação do gestor do seu setor e depois do gestor de origem do bem; o perfil não dispensa aprovações.
 - JWT com validade inicial configurável de 60 minutos. Verificar assinatura, expiração e usuário ativo, perfil e setor atuais em cada requisição.
 - Token somente em memória do frontend; atualizar a página exige login novamente, limitação aceita no MVP.
 - Logout local não revoga o token. Não há refresh token nesta versão.
