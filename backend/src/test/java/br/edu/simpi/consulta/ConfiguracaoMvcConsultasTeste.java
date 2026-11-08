@@ -11,6 +11,7 @@ import br.edu.simpi.consulta.service.ConsultaPatrimonialService;
 import br.edu.simpi.erro.controller.TratamentoErrosControllerAdvice;
 import br.edu.simpi.setor.Setor;
 import br.edu.simpi.solicitacao.controller.SolicitacaoConsultaController;
+import br.edu.simpi.solicitacao.controller.SolicitacaoAcaoController;
 import br.edu.simpi.solicitacao.controller.SolicitacaoCriacaoController;
 import br.edu.simpi.solicitacao.service.ConsultaSolicitacaoService;
 import br.edu.simpi.solicitacao.service.SolicitacaoService;
@@ -43,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, CustomAuthenticationEntryPoint.class,
         TratamentoAcessoNegado.class, CustomUserDetailsService.class, TratamentoErrosControllerAdvice.class,
         CadastroConsultaController.class, BemConsultaController.class, SolicitacaoConsultaController.class,
-        SolicitacaoCriacaoController.class})
+        SolicitacaoCriacaoController.class, SolicitacaoAcaoController.class})
 public class ConfiguracaoMvcConsultasTeste {
     @Bean ConsultaPatrimonialService consultasPatrimoniais() { return mock(ConsultaPatrimonialService.class); }
     @Bean ConsultaSolicitacaoService consultasSolicitacoes() { return mock(ConsultaSolicitacaoService.class); }

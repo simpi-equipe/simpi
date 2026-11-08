@@ -158,7 +158,8 @@ conforme informado, sem nova execução de testes ou build para esta atualizaç�
 A validação corresponde à suíte executada na entrega original do modelo. Naquela
 etapa, casos de uso, permissões e transições ainda estavam pendentes; as seções
 de evolução abaixo registram sua implementação posterior nos services. A exposição
-HTTP de criação já está implementada; a exposição das ações continua pendente, conforme o quadro atual da
+HTTP de criação, aprovação, recusa e cancelamento já está implementada;
+envio e recebimento permanecem pendentes, conforme o quadro atual da
 [documentação funcional](documentacao-funcional.md#estado-do-código-documentado).
 
 ## Evolução: criação de solicitações no service

@@ -8,9 +8,9 @@
       "_id": "wrk_simpi_consultas",
       "_type": "workspace",
       "parentId": null,
-      "name": "SIMPI - Consultas e criação",
+      "name": "SIMPI - Consultas, criação e ações",
       "scope": "collection",
-      "description": "Execute as pastas numeradas na ordem, com banco e aplicação iniciados. No ambiente base, preencha email e senha de um usuário ativo existente. Execute Login e copie somente accessToken para token (sem Bearer). Não há captura automática do token. Copie IDs reais das listas para setorId, localizacaoId, bemId e solicitacaoId antes dos detalhes. As consultas não criam dados. Listas vazias são válidas. Cenários de GESTOR/ADMINISTRADOR são condicionais: troque as credenciais, faça novo login e atualize token. Restaure um usuário COMUM para os casos 403. Não execute tudo de uma vez: há etapas manuais e pré-condições. Erros: codigo,mensagem,erros; itens de erros: campo,mensagem. Datas ISO 8601 UTC com Z; opcionais previstos usam null; arrays vazios usam []. A pasta 06 cria solicitações: preencha os IDs de destino e use um bem disponível. Consulte docs/seed-desenvolvimento.md para preparar dados fictícios."
+      "description": "Execute as pastas numeradas na ordem, com banco e aplicação iniciados. No ambiente base, preencha email e senha de um usuário ativo existente. Execute Login e copie somente accessToken para token (sem Bearer). Não há captura automática do token. Copie IDs reais das listas para setorId, localizacaoId, bemId e solicitacaoId antes dos detalhes. As consultas não criam dados. Listas vazias são válidas. Cenários de GESTOR/ADMINISTRADOR são condicionais: troque as credenciais, faça novo login e atualize token. Restaure um usuário COMUM para os casos 403. Não execute tudo de uma vez: há etapas manuais e pré-condições. Erros: codigo,mensagem,erros; itens de erros: campo,mensagem. Datas ISO 8601 UTC com Z; opcionais previstos usam null; arrays vazios usam []. A pasta 06 cria solicitações: preencha os IDs de destino e use um bem disponível. Consulte docs/seed-desenvolvimento.md para preparar dados fictícios. A pasta 07 aprova, recusa e cancela: use pedidos distintos por fluxo, IDs de aprovação retornados no detalhe e troque o token ao trocar de ator. Não executar em lote."
     },
     {
       "_id": "env_simpi_consultas",
@@ -31,7 +31,9 @@
         "buscaSolicitacao": "",
         "setorDestinoId": "",
         "localizacaoDestinoId": "",
-        "responsavelDestinoId": ""
+        "responsavelDestinoId": "",
+        "aprovacaoId": "",
+        "segundaAprovacaoId": ""
       },
       "dataPropertyOrder": null,
       "color": null,
@@ -1271,6 +1273,340 @@
         "token": "{{ _.token }}"
       },
       "metaSortKey": 142,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_simpi_acoes",
+      "_type": "request_group",
+      "parentId": "wrk_simpi_consultas",
+      "name": "07 - Aprovação, recusa e cancelamento",
+      "description": "Consulte docs/acoes-solicitacoes.md. Para 07.01 e 07.02, use a mesma aprovacaoId da primeira etapa. Para 07.03, use segundaAprovacaoId retornada e o token do gestor de origem. Antes de recusar ou cancelar, crie outro pedido e atualize solicitacaoId/aprovacaoId. Não executar todos os casos para o mesmo pedido.",
+      "environment": {},
+      "metaSortKey": 7
+    },
+    {
+      "_id": "req_simpi_acao_aprovar",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.01 - Aprovar primeira etapa [200]",
+      "description": "Exige gestor designado e pedido aguardando essa etapa. Retorna pedido atualizado e nova aprovação pendente. Copie seu id para segundaAprovacaoId, preservando aprovacaoId para 07.02.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.aprovacaoId }}/aprovar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 244,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_repetir",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.02 - Repetir etapa já aprovada [409]",
+      "description": "Após 07.01, repita a mesma etapa com o mesmo gestor. Esperado: ETAPA_JA_DECIDIDA. Não deve decidir segundaAprovacaoId.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.aprovacaoId }}/aprovar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 245,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_segunda",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.03 - Aprovar segunda etapa [200]",
+      "description": "Troque o token para o gestor designado da segunda etapa. Esperado: APROVADA, com ambas as decisões explícitas e bem inalterado.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.segundaAprovacaoId }}/aprovar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 246,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_recusar",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.04 - Recusar outro pedido [200]",
+      "description": "Use OUTRO pedido pendente e atualize os IDs. Exige gestor designado. Esperado: RECUSADA, evento RECUSA e liberação do bem.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.aprovacaoId }}/recusar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"justificativa\":\"O equipamento é necessário para a origem.\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 247,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_recusar_vazio",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.05 - Recusa sem justificativa válida [400]",
+      "description": "Esperado: DADOS_INVALIDOS com campo justificativa; nenhuma decisão registrada.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.aprovacaoId }}/recusar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"justificativa\":\"   \"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 248,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_cancelar",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.06 - Cancelar pedido próprio [200]",
+      "description": "Use outro pedido próprio em estado permitido e o token do SOLICITANTE. Esperado: CANCELADA, evento CANCELAMENTO, decisões preservadas e bem disponível.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/cancelar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"motivo\":\"A necessidade foi atendida por outro equipamento.\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 249,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_cancelar_vazio",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.07 - Cancelamento sem motivo válido [400]",
+      "description": "Esperado: DADOS_INVALIDOS com campo motivo, sem nova alteração de estado.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/cancelar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"motivo\":\"   \"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 250,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_cancelar_repetir",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.08 - Repetir cancelamento [409]",
+      "description": "Após 07.06, repita com o solicitante. Esperado: ESTADO_INCOMPATIVEL, sem novo evento.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/cancelar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"motivo\":\"Repetição de teste.\"}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 251,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_aprovacao_ausente",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.09 - Aprovação inexistente [404]",
+      "description": "Confirme idInexistente como ausente. Use ator com acesso ao pedido. Esperado: APROVACAO_NAO_ENCONTRADA.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.idInexistente }}/aprovar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 252,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_nao_designado",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.10 - Aprovar sem ser gestor designado [403]",
+      "description": "Use aprovação existente e token de um COMUM com acesso ao pedido. Esperado: ACAO_NAO_PERMITIDA. ADMINISTRADOR também não recebe permissão de aprovar pelo perfil.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/aprovacoes/{{ _.aprovacaoId }}/aprovar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 253,
       "isPrivate": false,
       "settingStoreCookies": false,
       "settingSendCookies": false,
