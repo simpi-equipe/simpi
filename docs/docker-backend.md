@@ -189,7 +189,7 @@ Com o backend iniciado, acesse:
 3. Em Authorize, cole o token sem escrever Bearer; o esquema HTTP Bearer inclui o prefixo.
 4. Confira GET /api/auth/me e execute as consultas desejadas.
 
-O login é público. /me, as oito consultas e a criação exigem Bearer; os endereços da
+O login é público. /me, as oito consultas, a criação, aprovação, recusa e cancelamento exigem Bearer; os endereços da
 documentação já estão liberados na configuração de segurança. O principal
 autenticado não é um parâmetro ou corpo de entrada. Services continuam
 recarregando e revalidando o usuário no banco.
@@ -198,13 +198,14 @@ Em 401, obtenha um novo token quando aplicável. Em 403, confira perfil e
 permissões; repetir o login com o mesmo perfil não concede acesso.
 Parâmetros, padrões, DTOs e códigos públicos seguem o
 [contrato](contratos-api-v1.1.md). A criação retorna 201 com Location;
-somente as rotas das ações ainda não têm Controllers neste checkout.
+aprovação, recusa e cancelamento retornam 200 com o pedido atualizado.
+Somente envio e recebimento ainda não têm Controllers neste checkout.
 
 ## Coleção Insomnia
 
 Importe por Import → File a
 [coleção de consultas e criação](testes-manuais/insomnia/simpi-consultas.json).
-Ela contém 35 requisições em seis pastas numeradas.
+Ela contém 45 requisições em sete pastas numeradas.
 
 No ambiente base, ajuste url_base e preencha email/senha com uma conta local.
 Execute o login e copie accessToken para token, sem Bearer. A captura do token
@@ -213,6 +214,9 @@ solicitacaoId com IDs realmente retornados pelo seu banco.
 Para a pasta de criação, preencha também setorDestinoId, localizacaoDestinoId
 e responsavelDestinoId. O POST cria dados; sua repetição para o mesmo bem
 retorna 409 enquanto houver solicitação em andamento.
+Na pasta de ações, copie aprovacaoId e segundaAprovacaoId do pedido. Troque
+o token quando trocar de ator e use pedidos distintos para aprovar, recusar
+e cancelar, conforme o [roteiro de ações](acoes-solicitacoes.md).
 
 Siga as descrições e a ordem das pastas. Casos de GESTOR/ADMINISTRADOR exigem
 contas desses perfis e tokens correspondentes; não execute toda a coleção

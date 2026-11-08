@@ -3,7 +3,8 @@
 ## Estado do código documentado
 
 O código de referência inclui a entrega de consultas e Swagger,
-commit `4beaffb`, e a evolução local de criação HTTP e seed de desenvolvimento.
+commit `4beaffb`, a entrega de criação HTTP e seed de desenvolvimento e a
+evolução local de aprovação, recusa e cancelamento HTTP.
 O quadro descreve esse checkout, sem afirmar
 integração à main, situação atual do remoto, aprovação de CI ou disponibilidade
 em deploy. Para esses estados é necessária uma verificação específica.
@@ -15,7 +16,8 @@ em deploy. Para esses estados é necessária uma verificação específica.
 | Bens e transferências | Pesquisa, detalhe e histórico implementados | GET /api/bens, /api/bens/{id} e /api/bens/{id}/transferencias |
 | Consultas de solicitações | Pesquisa, visões, paginação e detalhe implementados | GET /api/solicitacoes e /api/solicitacoes/{id} |
 | Criação de solicitações | Service implementado; COMUM e ADMINISTRADOR seguem as duas etapas de aprovação | POST /api/solicitacoes, com 201 e Location |
-| Aprovação, recusa, cancelamento, envio e recebimento | Implementados nos services | Controllers dessas ações permanecem pendentes |
+| Aprovação, recusa e cancelamento | Services existentes preservados | POST /api/solicitacoes/{solicitacaoId}/aprovacoes/{aprovacaoId}/aprovar, /recusar e /api/solicitacoes/{id}/cancelar |
+| Envio e recebimento | Implementados nos services | Controllers dessas ações permanecem pendentes |
 | Cadastros de demonstração | Seed optativo no perfil seed-desenvolvimento; senha externa e BCrypt | Sem cadastro público ou rota de seed |
 | Erros | Advice MVC/negócio e handlers de segurança implementados | Envelope e códigos do contrato |
 | Ferramentas | springdoc 3.2.0 e coleção Insomnia | Swagger UI e documento OpenAPI disponíveis quando a aplicação desse checkout estiver iniciada |
@@ -34,7 +36,7 @@ fica centralizada no guia operacional. O
 ## Regras preservadas na evolução
 
 Criação, aprovação, recusa, cancelamento, envio, recebimento e consultas usam os
-services existentes. Os Controllers de consulta recebem
+services existentes. Os Controllers de consulta, criação e ações recebem
 `@AuthenticationPrincipal Usuario ator`; não recebem identidade por query,
 corpo ou header arbitrário. Os services recarregam e revalidam o usuário no banco.
 Isso preserva a responsabilidade dos services mesmo com autenticação JWT na entrada.
@@ -129,6 +131,51 @@ evento CRIACAO. A consulta do detalhe retornou 200; a repetição do POST
 retornou 409 BEM_COM_SOLICITACAO_EM_ANDAMENTO. O pedido de demonstração
 permaneceu ativo; esta validação não executou aprovação, envio ou recebimento.
 
+### Validação dos Controllers de aprovação, recusa e cancelamento — 08/11/2026
+
+As suítes selecionadas desta evolução aprovaram 130 testes MVC/OpenAPI:
+ContratoOpenApiTest (15), SolicitacaoAcaoControllerTest (39),
+SolicitacaoCriacaoControllerTest (19), SolicitacaoConsultaControllerTest (17),
+BemConsultaControllerTest (28) e CadastroConsultaControllerTest (12).
+
+Na integração foram aprovados DecisaoAprovacaoServiceIT (15),
+CancelamentoSolicitacaoServiceIT (14) e AcoesSolicitacaoHttpIT (15), totalizando
+44 casos selecionados, sem somar execuções repetidas. A primeira execução
+conjunta encontrou um erro na preparação de dois pedidos na mesma transação;
+após corrigir o adiamento da FK circular na fixture, os 15 casos HTTP foram
+reexecutados isoladamente com test-compile, failsafe:integration-test e
+failsafe:verify, concluindo com BUILD SUCCESS. Nenhuma regra de produção ou
+migration foi alterada para corrigir esse preparo.
+
+Os cenários HTTP usam cadeia real de segurança, services e PostgreSQL em
+simpi_test: duas decisões explícitas mesmo com o mesmo gestor, repetição de
+etapa, recusa e cancelamento com liberação do bem, preservação dos dados
+patrimoniais, ator não designado, texto vazio, estado incompatível e aprovação
+de outro pedido. Esses resultados não representam a suíte completa, aprovação
+de CI ou validação manual de um contêiner atualizado. O
+[roteiro manual](acoes-solicitacoes.md) exige reiniciar o backend com esta versão.
+
+### Validação manual das ações no Swagger — 08/11/2026
+
+Com o backend atualizado, SOL-2026-0001 foi aprovado explicitamente pelo
+gestor de DEMO-AREA e depois pelo gestor de DEMO-ORIGEM. As duas chamadas
+retornaram 200; o estado final foi APROVADA. ADMINISTRADOR recebeu 403 ao
+tentar aprovar, e a repetição da primeira etapa retornou
+409 ETAPA_JA_DECIDIDA sem decidir a segunda.
+
+Em um pedido separado para DEMO-ORIGEM-2, justificativa só com espaços
+retornou 400 DADOS_INVALIDOS. A recusa válida de SOL-2026-0002 retornou 200,
+com RECUSADA, decisão e evento RECUSA. A criação de SOL-2026-0003 para o
+mesmo bem retornou 201, confirmando sua liberação após a recusa.
+
+No cancelamento de SOL-2026-0003, motivo só com espaços retornou 400.
+O solicitante ADMINISTRADOR cancelou com motivo válido: 200, CANCELADA,
+evento CANCELAMENTO e aprovação pendente preservada. A repetição retornou
+409 ESTADO_INCOMPATIVEL. Na consulta final, DEMO-ORIGEM-2 estava disponível;
+DEMO-ORIGEM-1 continuou bloqueado pelo pedido aprovado. Setor, localização
+e responsável dos dois bens permaneceram na origem. Envio e recebimento
+não foram executados; os três pedidos fictícios permaneceram no banco local.
+
 Os contextos de consulta e OpenAPI usam `@TestConfiguration` com carregamento
 explícito, evitando descoberta automática de seus mocks nos testes de integração.
 Há também testes próprios de autenticação e do advice; as contagens 57 e 13
@@ -185,7 +232,8 @@ não são uma lista de trabalho para criar novamente as migrations já aplicadas
 5. **Concorrência — implementada:** a V2 contém índice único parcial por bem
    ativo e unicidade de aprovação por solicitação/etapa. Criação, decisões e
    demais transições estão nos services, com proteções de estado, concorrência
-   e transação. O Controller HTTP de criação está implementado; os das ações permanecem pendentes.
+   e transação. Criação, aprovação, recusa e cancelamento têm Controllers HTTP;
+   envio e recebimento permanecem pendentes de exposição HTTP.
 6. **Perfil administrador — abertura aprovada:** ADMINISTRADOR pode abrir
    solicitações seguindo o fluxo de COMUM: gestor do setor do solicitante e,
    depois, gestor do setor de origem do bem. Consulta global não concede

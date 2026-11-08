@@ -103,7 +103,7 @@ class ContratoOpenApiTest {
         assertEquals("bearer", documento.at("/components/securitySchemes/bearerAuth/scheme").asString());
         assertTrue(documento.path("security").isMissingNode() || documento.path("security").isEmpty());
         var caminhos = documento.get("paths");
-        assertEquals(10, caminhos.size());
+        assertEquals(13, caminhos.size());
         var login = caminhos.get("/api/auth/login").get("post");
         assertTrue(login.path("security").isMissingNode() || login.path("security").isEmpty());
         assertTrue(login.path("parameters").isMissingNode() || login.path("parameters").isEmpty());
@@ -141,6 +141,44 @@ class ContratoOpenApiTest {
         }
         verifyNoInteractions(contexto.getBean(ConsultaPatrimonialService.class),
                 contexto.getBean(ConsultaSolicitacaoService.class), contexto.getBean(AutenticacaoService.class));
+    }
+
+    @Test
+    void documentarAprovacaoRecusaECancelamentoComPrincipalOculto() throws Exception {
+        var documento = carregarDocumento();
+        for (String acao : List.of("aprovar", "recusar", "cancelar")) {
+            String caminho = acao.equals("cancelar") ? "/api/solicitacoes/{id}/cancelar"
+                    : "/api/solicitacoes/{solicitacaoId}/aprovacoes/{aprovacaoId}/" + acao;
+            var operacao = documento.get("paths").get(caminho).get("post");
+            assertTrue(operacao.at("/security/0").has("bearerAuth"));
+            Set<String> nomes = new HashSet<>();
+            for (var parametro : operacao.get("parameters")) {
+                nomes.add(parametro.get("name").asString());
+                assertEquals("path", parametro.get("in").asString());
+                assertTrue(parametro.get("required").asBoolean());
+                assertEquals("int64", parametro.at("/schema/format").asString());
+            }
+            assertEquals(acao.equals("cancelar") ? Set.of("id") : Set.of("solicitacaoId", "aprovacaoId"), nomes);
+            if (acao.equals("aprovar")) {
+                assertFalse(operacao.has("requestBody"));
+            } else {
+                String esquema = acao.equals("recusar") ? "RecusarAprovacaoRequest" : "CancelarSolicitacaoRequest";
+                assertTrue(operacao.at("/requestBody/required").asBoolean());
+                assertEquals("#/components/schemas/" + esquema,
+                        operacao.at("/requestBody/content/application~1json/schema/$ref").asString());
+                String campo = acao.equals("recusar") ? "justificativa" : "motivo";
+                var dados = documento.get("components").get("schemas").get(esquema);
+                assertEquals(1, dados.get("properties").size());
+                assertTrue(dados.get("properties").has(campo));
+                assertEquals(campo, dados.get("required").get(0).asString());
+            }
+            assertEquals("#/components/schemas/SolicitacaoResponse",
+                    operacao.at("/responses/200/content/application~1json/schema/$ref").asString());
+            for (String estado : List.of("400", "401", "403", "404", "409", "500")) {
+                assertEquals("#/components/schemas/ErroResponse",
+                        operacao.at("/responses/" + estado + "/content/application~1json/schema/$ref").asString());
+            }
+        }
     }
 
     @Test

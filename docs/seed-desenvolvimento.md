@@ -74,5 +74,6 @@ estado inicial de bens que já foram movimentados.
    estado esperado é `AGUARDANDO_GESTOR_RESPONSAVEL`, sem decisão automática.
 
 A coleção [Insomnia](testes-manuais/insomnia/simpi-consultas.json) inclui
-requisições de criação e conflito. Os endpoints HTTP das ações de aprovação,
-recusa, cancelamento, envio e recebimento continuam pendentes nesta entrega.
+requisições de criação, conflito, aprovação, recusa e cancelamento. O
+[roteiro de ações](acoes-solicitacoes.md) orienta as trocas de ator e pedidos.
+Os endpoints HTTP de envio e recebimento continuam pendentes nesta entrega.
