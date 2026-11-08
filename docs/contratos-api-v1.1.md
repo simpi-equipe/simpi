@@ -123,7 +123,7 @@ Authorization: Bearer <token-jwt>
 
 | Decisão | Comportamento |
 | --- | --- |
-| Validade inicial | 60 minutos a partir da emissão. Configurável no backend; expiresIn acompanha a configuração. Não é prazo de inatividade. |
+| Validade inicial | 60 minutos a partir da emissão. Configuração jwt.expiration em milissegundos; expiresIn na resposta em segundos acompanha essa configuração. Não é prazo de inatividade. |
 | Armazenamento | Somente em memória do frontend, sem localStorage ou sessionStorage. |
 | Recarregamento | Atualizar a página perde o token e exige novo login. Limitação de experiência registrada para evolução. |
 | Expiração | Frontend limpa a sessão e encaminha ao login ao receber 401. |
@@ -621,15 +621,19 @@ a revisão dos endpoints**; não converter essas respostas em 400 ou 500 pelo fa
 
 ### Acordo para integração com segurança
 
-O advice traduz erros MVC e as exceções de negócio dos services. A futura cadeia
-de segurança tratará autenticação/autorização em seus próprios filtros e handlers,
-usando os mesmos DTOs `ErroResponse` e `ErroCampoResponse`. Falha de login usa
+O advice traduz erros MVC e as exceções de negócio dos services. A integração
+com segurança prevista neste acordo foi implementada: filtros e handlers tratam
+autenticação/autorização usando os mesmos DTOs `ErroResponse` e `ErroCampoResponse`.
+Falha de login usa
 `CREDENCIAIS_INVALIDAS`; falha de autenticação nas demais rotas usa `NAO_AUTENTICADO`.
 
-Antes de integrar os filtros ou ativar segurança de métodos, revisar o fallback
-do advice para não consumir exceções de segurança como 500, nem duplicar handlers
-ou escrever uma segunda resposta. Não há mecanismos antecipados, autenticação
-provisória ou alteração da cadeia de segurança nesta entrega.
+O fallback do advice preserva exceções de autenticação e acesso negado, inclusive
+quando encapsuladas, para a cadeia responsável; não as converte em 500 nem escreve
+uma segunda resposta. O usuário autenticado é recebido como principal, sem
+identidade arbitrária na requisição, e os services mantêm sua revalidação.
+Essas informações descrevem a implementação do acordo, sem alterar os status,
+códigos ou permissões aprovados. O estado das entregas está na
+[documentação funcional](documentacao-funcional.md#estado-do-código-documentado).
 
 ## Proteção contra repetição e concorrência
 
