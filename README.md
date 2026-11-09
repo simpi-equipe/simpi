@@ -14,6 +14,7 @@ O código deste checkout inclui:
 - Criação de solicitações em `POST /api/solicitacoes`, com usuário autenticado, `201` e `Location`.
 - Aprovação, recusa e cancelamento autenticados, reutilizando os services existentes.
 - Envio e recebimento autenticados pela API, reutilizando os services existentes.
+- CORS para integração com o frontend local; origens publicadas configuráveis por `CORS_ORIGENS_PERMITIDAS`.
 - Seed optativo de desenvolvimento com cadastros fictícios e senha informada na execução.
 - Migrations V1 e V2, Hibernate em validação e bancos separados para desenvolvimento e integração.
 - Testes unitários, MVC/OpenAPI e de integração, além dos workflows de CI.
@@ -130,6 +131,10 @@ O build gera `frontend/dist/`. O lockfile deve ser versionado;
 `node_modules/`, `dist/` e arquivos `.env` reais são ignorados.
 O frontend atual não exige `.env`, credenciais, backend ou banco.
 Bibliotecas adicionais serão escolhidas pela pessoa responsável pelo frontend.
+
+Ao integrar as telas à API, consulte a [configuração de CORS](docs/docker-backend.md#integração-com-o-frontend-e-cors).
+O backend permite as origens locais do Vite na porta 5173; configure a lista
+de origens explicitamente no ambiente publicado.
 
 ## Preparar o ambiente local
 
