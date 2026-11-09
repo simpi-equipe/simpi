@@ -5,6 +5,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -58,6 +59,66 @@ class AcoesSolicitacaoHttpIT {
                 .andExpect(jsonPath("$.aprovacoes[1].decisao").value("APROVADA"));
         assertEquals(3L, banco.queryForObject("SELECT count(*) FROM evento_solicitacao WHERE solicitacao_id=?", Long.class, cenario.id()));
         verificarBemInalterado(cenario);
+    }
+
+    @Test
+    void movimentacaoCompletaPelaApiAtualizaBemSomenteNoRecebimento() throws Exception {
+        var cenario = criarPedido("COMUM");
+        var dados = cenario.dados();
+        Long origem = dados.origem().gestorId();
+        Long destino = dados.destino().gestorId();
+        var primeira = ler(decidir(cenario, "aprovar", origem, "").andExpect(status().isOk()));
+        long segunda = primeira.get("aprovacoes").get(1).get("id").asLong();
+        mvc.perform(post("/api/solicitacoes/" + cenario.id() + "/aprovacoes/" + segunda + "/aprovar")
+                        .header("Authorization", token(origem)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APROVADA"));
+        executar(cenario, "enviar", destino).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("ACAO_NAO_PERMITIDA"));
+        executar(cenario, "receber", destino).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("ESTADO_INCOMPATIVEL"));
+        executar(cenario, "enviar", origem).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_TRANSITO"))
+                .andExpect(jsonPath("$.envio.realizadoPor.id").value(origem))
+                .andExpect(jsonPath("$.eventos[3].tipo").value("ENVIO"));
+        verificarBemInalterado(cenario);
+        executar(cenario, "enviar", origem).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("ESTADO_INCOMPATIVEL"));
+        executar(cenario, "receber", origem).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("ACAO_NAO_PERMITIDA"));
+        executar(cenario, "receber", destino).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"))
+                .andExpect(jsonPath("$.recebimento.realizadoPor.id").value(destino))
+                .andExpect(jsonPath("$.eventos[4].tipo").value("RECEBIMENTO"))
+                .andExpect(jsonPath("$.acoesDisponiveis").isEmpty());
+        executar(cenario, "receber", destino).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("ESTADO_INCOMPATIVEL"));
+        var bem = banco.queryForMap("SELECT setor_id,localizacao_id,responsavel_id FROM bem_patrimonial WHERE id=?",
+                dados.origem().bemId());
+        assertEquals(dados.destino().setorId(), bem.get("setor_id"));
+        assertEquals(dados.destino().localizacaoId(), bem.get("localizacao_id"));
+        assertEquals(destino, bem.get("responsavel_id"));
+        assertEquals(5L, banco.queryForObject("SELECT count(*) FROM evento_solicitacao WHERE solicitacao_id=?",
+                Long.class, cenario.id()));
+    }
+
+    private ResultActions executar(Cenario cenario, String acao, Long ator) throws Exception {
+        return mvc.perform(post("/api/solicitacoes/" + cenario.id() + "/" + acao)
+                .header("Authorization", token(ator)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"enviar,0", "receber,0", "enviar,-1", "receber,-1"})
+    void rejeitarIdNaoPositivoComCampoInformadoPeloServiceReal(String acao, Long id) throws Exception {
+        var dados = DadosSolicitacoesTeste.preparar(banco);
+        mvc.perform(post("/api/solicitacoes/" + id + "/" + acao)
+                        .header("Authorization", token(dados.solicitanteId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(header().doesNotExist("Location"))
+                .andExpect(content().json("""
+                        {"codigo":"DADOS_INVALIDOS","mensagem":"Revise os campos informados.",
+                         "erros":[{"campo":"solicitacaoId","mensagem":"Informe um identificador positivo."}]}
+                        """));
     }
 
     @Test

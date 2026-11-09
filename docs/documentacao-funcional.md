@@ -4,7 +4,7 @@
 
 O código de referência inclui a entrega de consultas e Swagger,
 commit `4beaffb`, a entrega de criação HTTP e seed de desenvolvimento e a
-evolução local de aprovação, recusa e cancelamento HTTP.
+evolução local de aprovação, recusa, cancelamento, envio e recebimento HTTP.
 O quadro descreve esse checkout, sem afirmar
 integração à main, situação atual do remoto, aprovação de CI ou disponibilidade
 em deploy. Para esses estados é necessária uma verificação específica.
@@ -17,7 +17,7 @@ em deploy. Para esses estados é necessária uma verificação específica.
 | Consultas de solicitações | Pesquisa, visões, paginação e detalhe implementados | GET /api/solicitacoes e /api/solicitacoes/{id} |
 | Criação de solicitações | Service implementado; COMUM e ADMINISTRADOR seguem as duas etapas de aprovação | POST /api/solicitacoes, com 201 e Location |
 | Aprovação, recusa e cancelamento | Services existentes preservados | POST /api/solicitacoes/{solicitacaoId}/aprovacoes/{aprovacaoId}/aprovar, /recusar e /api/solicitacoes/{id}/cancelar |
-| Envio e recebimento | Implementados nos services | Controllers dessas ações permanecem pendentes |
+| Envio e recebimento | Services existentes preservados | POST /api/solicitacoes/{id}/enviar e /api/solicitacoes/{id}/receber, sem corpo, com 200 e solicitação atualizada |
 | Cadastros de demonstração | Seed optativo no perfil seed-desenvolvimento; senha externa e BCrypt | Sem cadastro público ou rota de seed |
 | Erros | Advice MVC/negócio e handlers de segurança implementados | Envelope e códigos do contrato |
 | Ferramentas | springdoc 3.2.0 e coleção Insomnia | Swagger UI e documento OpenAPI disponíveis quando a aplicação desse checkout estiver iniciada |
@@ -26,8 +26,8 @@ A persistência inclui migrations V1 e V2; Hibernate apenas valida o esquema.
 Não há cadastro público ou conta de demonstração habilitada por padrão.
 O [seed optativo](seed-desenvolvimento.md) prepara cadastros fictícios em banco
 local de desenvolvimento, sem solicitações e sem alterar as migrations.
-O contrato lista também operações futuras: constar no catálogo não comprova
-que o respectivo Controller esteja implementado.
+As operações do contrato v1.1 estão expostas neste checkout; isso não comprova
+que uma aplicação já iniciada ou publicada esteja executando esta versão.
 
 A [execução local, configuração JWT, ferramentas e preparação dos dados](docker-backend.md)
 fica centralizada no guia operacional. O
@@ -232,8 +232,8 @@ não são uma lista de trabalho para criar novamente as migrations já aplicadas
 5. **Concorrência — implementada:** a V2 contém índice único parcial por bem
    ativo e unicidade de aprovação por solicitação/etapa. Criação, decisões e
    demais transições estão nos services, com proteções de estado, concorrência
-   e transação. Criação, aprovação, recusa e cancelamento têm Controllers HTTP;
-   envio e recebimento permanecem pendentes de exposição HTTP.
+   e transação. Criação, aprovação, recusa, cancelamento, envio e recebimento
+   têm Controllers HTTP que reutilizam esses services.
 6. **Perfil administrador — abertura aprovada:** ADMINISTRADOR pode abrir
    solicitações seguindo o fluxo de COMUM: gestor do setor do solicitante e,
    depois, gestor do setor de origem do bem. Consulta global não concede

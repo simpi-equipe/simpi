@@ -48,6 +48,27 @@ public class SolicitacaoAcaoController {
         this.solicitacoes = solicitacoes;
     }
 
+    @PostMapping("/{id}/enviar")
+    @Operation(summary = "Registrar envio do bem", description = "Sem corpo. Exige usuário ativo do setor de origem "
+            + "preservado no pedido e estado APROVADA. Registra envio e evento ENVIO, muda para EM_TRANSITO "
+            + "e mantém o cadastro do bem inalterado. Repetição retorna 409 ESTADO_INCOMPATIVEL.")
+    public SolicitacaoResponse enviar(
+            @Parameter(schema = @Schema(type = "integer", format = "int64", minimum = "1")) @PathVariable("id") Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal Usuario ator) {
+        return solicitacoes.enviar(id, ator);
+    }
+
+    @PostMapping("/{id}/receber")
+    @Operation(summary = "Confirmar recebimento do bem", description = "Sem corpo. Exige usuário ativo do setor de destino "
+            + "preservado no pedido e estado EM_TRANSITO com envio registrado. Na mesma transação, registra recebimento, "
+            + "atualiza o bem com setor, localização e responsável do destino preservado, conclui o pedido e gera evento "
+            + "RECEBIMENTO. Quem recebe não substitui o responsável de destino. Repetição retorna 409 ESTADO_INCOMPATIVEL.")
+    public SolicitacaoResponse receber(
+            @Parameter(schema = @Schema(type = "integer", format = "int64", minimum = "1")) @PathVariable("id") Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal Usuario ator) {
+        return solicitacoes.receber(id, ator);
+    }
+
     @PostMapping("/{solicitacaoId}/aprovacoes/{aprovacaoId}/aprovar")
     @Operation(summary = "Aprovar etapa da solicitação", description = "Sem corpo. Exige gestor ativo designado para a etapa "
             + "e pertencimento atual ao setor correspondente. Cada aprovação exige uma decisão explícita, mesmo com o mesmo gestor "

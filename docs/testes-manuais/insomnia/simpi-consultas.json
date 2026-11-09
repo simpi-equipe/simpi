@@ -1614,6 +1614,180 @@
       "settingEncodeUrl": true,
       "settingRebuildPath": true,
       "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_envio",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.11 - Registrar envio [200]",
+      "description": "Use pedido APROVADA e token de usuario ativo do setor de origem preservado. Sem corpo. Esperado: EM_TRANSITO, bloco envio e evento ENVIO; cadastro do bem inalterado.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/enviar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 254,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_envio_repetido",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.12 - Repetir envio [409]",
+      "description": "Apos 07.11, repita com o mesmo ator. Esperado: ESTADO_INCOMPATIVEL, sem novo evento.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/enviar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 255,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_recebimento",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.13 - Confirmar recebimento [200]",
+      "description": "Use o pedido EM_TRANSITO e token de usuario ativo do setor de destino preservado. Sem corpo. Esperado: CONCLUIDA, bloco recebimento e evento RECEBIMENTO. Confira bem e historico; o responsavel permanece o destino definido no pedido.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/receber",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 256,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_recebimento_repetido",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.14 - Repetir recebimento [409]",
+      "description": "Apos 07.13, repita com o mesmo ator. Esperado: ESTADO_INCOMPATIVEL, sem novo evento.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/receber",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 257,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_envio_setor_incorreto",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.15 - Enviar fora do setor de origem [403]",
+      "description": "Use token de usuario ativo fora do setor de origem preservado. Esperado: ACAO_NAO_PERMITIDA; perfil ADMINISTRADOR nao dispensa vinculo ao setor.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/enviar",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 258,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_simpi_acao_recebimento_antecipado",
+      "_type": "request",
+      "parentId": "fld_simpi_acoes",
+      "name": "07.16 - Receber antes do envio [409]",
+      "description": "Use OUTRO pedido ainda APROVADA e token do setor de destino. Esperado: ESTADO_INCOMPATIVEL. Nao executar sequencialmente no pedido ja concluido.",
+      "method": "POST",
+      "url": "{{ _.url_base }}/api/solicitacoes/{{ _.solicitacaoId }}/receber",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.token }}"
+      },
+      "metaSortKey": 259,
+      "isPrivate": false,
+      "settingStoreCookies": false,
+      "settingSendCookies": false,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
     }
   ]
 }
