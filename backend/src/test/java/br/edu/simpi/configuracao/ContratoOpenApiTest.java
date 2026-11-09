@@ -103,7 +103,7 @@ class ContratoOpenApiTest {
         assertEquals("bearer", documento.at("/components/securitySchemes/bearerAuth/scheme").asString());
         assertTrue(documento.path("security").isMissingNode() || documento.path("security").isEmpty());
         var caminhos = documento.get("paths");
-        assertEquals(13, caminhos.size());
+        assertEquals(15, caminhos.size());
         var login = caminhos.get("/api/auth/login").get("post");
         assertTrue(login.path("security").isMissingNode() || login.path("security").isEmpty());
         assertTrue(login.path("parameters").isMissingNode() || login.path("parameters").isEmpty());
@@ -172,6 +172,28 @@ class ContratoOpenApiTest {
                 assertTrue(dados.get("properties").has(campo));
                 assertEquals(campo, dados.get("required").get(0).asString());
             }
+            assertEquals("#/components/schemas/SolicitacaoResponse",
+                    operacao.at("/responses/200/content/application~1json/schema/$ref").asString());
+            for (String estado : List.of("400", "401", "403", "404", "409", "500")) {
+                assertEquals("#/components/schemas/ErroResponse",
+                        operacao.at("/responses/" + estado + "/content/application~1json/schema/$ref").asString());
+            }
+        }
+    }
+
+    @Test
+    void documentarEnvioERecebimentoSemCorpoComPrincipalOculto() throws Exception {
+        var documento = carregarDocumento();
+        for (String acao : List.of("enviar", "receber")) {
+            var operacao = documento.get("paths").get("/api/solicitacoes/{id}/" + acao).get("post");
+            assertTrue(operacao.at("/security/0").has("bearerAuth"));
+            assertFalse(operacao.has("requestBody"));
+            assertEquals(1, operacao.get("parameters").size());
+            var parametro = operacao.get("parameters").get(0);
+            assertEquals("id", parametro.get("name").asString());
+            assertEquals("path", parametro.get("in").asString());
+            assertTrue(parametro.get("required").asBoolean());
+            assertEquals("int64", parametro.at("/schema/format").asString());
             assertEquals("#/components/schemas/SolicitacaoResponse",
                     operacao.at("/responses/200/content/application~1json/schema/$ref").asString());
             for (String estado : List.of("400", "401", "403", "404", "409", "500")) {

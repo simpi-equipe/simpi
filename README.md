@@ -13,7 +13,7 @@ O código deste checkout inclui:
 - Swagger UI/OpenAPI com springdoc 3.2.0 e coleção Insomnia para testes manuais.
 - Criação de solicitações em `POST /api/solicitacoes`, com usuário autenticado, `201` e `Location`.
 - Aprovação, recusa e cancelamento autenticados, reutilizando os services existentes.
-- Services de envio e recebimento; seus Controllers HTTP permanecem pendentes.
+- Envio e recebimento autenticados pela API, reutilizando os services existentes.
 - Seed optativo de desenvolvimento com cadastros fictícios e senha informada na execução.
 - Migrations V1 e V2, Hibernate em validação e bancos separados para desenvolvimento e integração.
 - Testes unitários, MVC/OpenAPI e de integração, além dos workflows de CI.
@@ -247,7 +247,7 @@ específica.
 - Resolver e validar as pendências técnicas registradas na
   [documentação funcional](docs/documentacao-funcional.md#decisões-técnicas-e-pendências-funcionais).
 - Evoluir migrations e entidades somente quando a próxima entrega aprovada exigir.
-- Implementar os Controllers de envio e recebimento, reutilizando os services existentes.
+- Homologar o fluxo completo de movimentação pela API e integrar as telas ao backend.
 - Implementar as telas e escolher as bibliotecas adicionais do frontend.
 - Conferir a versão e os requisitos do futuro PostgreSQL no Supabase
   antes de planejar a conexão remota.
