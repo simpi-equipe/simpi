@@ -38,6 +38,7 @@ não devem ser commitados. As variáveis têm as seguintes responsabilidades:
 | POSTGRES_TEST_PASSWORD | Senha exclusiva do serviço postgres-test; mantenha definida no ambiente do Compose |
 | DB_URL | JDBC do banco que o backend deve usar; depende do modo de execução |
 | JWT_SECRET | Chave própria, Base64 de pelo menos 32 bytes aleatórios |
+| CORS_ORIGENS_PERMITIDAS | Origens exatas do frontend separadas por vírgula; substitui a lista local no ambiente publicado |
 
 Spring Boot não lê `.env` automaticamente. O Compose o usa para interpolação;
 o backend em contêiner recebe as variáveis por `--env-file`. No IntelliJ ou em
@@ -177,6 +178,58 @@ docker run -d --name simpi-backend --network simpi-local_default --env-file .env
 Essa remoção afeta somente o contêiner do backend, não os volumes do banco.
 `docker start` não adota uma nova imagem nem relê o `.env`.
 Se precisar reconstruir, execute o `docker build` mostrado acima antes da recriação.
+
+## Integração com o frontend e CORS
+
+O backend trata CORS em `/api/**`, antes da autenticação. Sem configuração
+adicional, permite `http://localhost:5173` e `http://127.0.0.1:5173`, usados
+pelo Vite local. Porta, protocolo e hostname fazem parte da origem; uma porta
+diferente exige atualizar a lista.
+
+Para o ambiente publicado, defina `CORS_ORIGENS_PERMITIDAS` no processo do
+backend com as URLs reais do frontend, separadas por vírgula. Exemplo fictício:
+
+```dotenv
+CORS_ORIGENS_PERMITIDAS=https://frontend.simpi.example,https://outro.simpi.example
+```
+
+Essa lista substitui as origens locais; inclua-as explicitamente se também
+precisar delas naquele ambiente. Use origens sem caminho, query ou barra final,
+com protocolo e porta quando aplicável. Use endereços exatos, sem `*`.
+Uma lista vazia não libera requisições entre origens diferentes.
+
+- Métodos permitidos: `GET`, `POST` e `OPTIONS`.
+- Cabeçalhos de requisição permitidos: `Authorization` e `Content-Type`.
+- `Location` é exposto para o frontend ler a URL de uma solicitação criada.
+- O preflight válido é atendido sem JWT; as operações protegidas continuam
+  exigindo `Authorization: Bearer <token>` e respeitando as permissões existentes.
+- Cookies e credenciais automáticas do navegador não são habilitados. O token
+  continua em memória do frontend, conforme o contrato do MVP.
+
+No Docker, atualize o `.env` usado por `--env-file` e recrie o contêiner para
+reler as variáveis. Na primeira aplicação desta mudança, reconstrua também a
+imagem, conforme [a recriação após alterações](#recriar-após-mudar-código-ou-variáveis).
+No IntelliJ/Java local, configure a variável na execução e reinicie o processo.
+O Swagger na mesma origem e os clientes sem `Origin`, como Insomnia, continuam
+usando a autenticação normal.
+
+Os testes `ConfiguracaoCorsTest` e `ConfiguracaoCorsPublicacaoTest` exercitam a
+cadeia real de segurança, os preflights, as listas de origens, o bloqueio de
+métodos/cabeçalhos, o `401` com CORS e a leitura de `Location`, sem banco externo.
+
+Em 09/11/2026, passaram 141 testes selecionados nessas duas classes e em
+`ContratoAutenticacaoTest`, `ContratoOpenApiTest`,
+`TratamentoErrosControllerAdviceTest` e `SolicitacaoExecucaoControllerTest`,
+sem falhas, erros ou casos ignorados, com `BUILD SUCCESS`. Essa execução não
+inclui integração com PostgreSQL nem comprova atualização do contêiner em execução.
+
+Na reconstrução Docker de 09/11/2026, passaram os 269 testes unitários/MVC/OpenAPI
+executados pelo Dockerfile, sem falhas, erros ou casos ignorados, com `BUILD SUCCESS`.
+Após recriar o backend local com essa imagem, a validação HTTP confirmou preflight
+`200` para as duas origens locais, `403` para uma origem fora da lista e `401`
+em `/api/bens` sem JWT, com os cabeçalhos CORS e exposição de `Location` presentes.
+Nenhum registro de negócio foi alterado por essas chamadas. Essa validação local
+não comprova publicação remota nem execução dos testes `*IT` no build Docker.
 
 ## Swagger e OpenAPI
 
