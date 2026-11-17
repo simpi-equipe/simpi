@@ -119,60 +119,72 @@ public class SeedDesenvolvimento implements CommandLineRunner {
                 """, Integer.class);
     }
 
+        
     private void criarArea(String area) {
-        String codigo = "DEMO-" + area;
-        String sufixo = area.toLowerCase(java.util.Locale.ROOT) + "@simpi.example";
+    String codigo = "DEMO-" + area;
+    String sufixo = area.toLowerCase(java.util.Locale.ROOT) + "@simpi.example";
+    boolean postgres = obterEnderecoBanco().startsWith("jdbc:postgresql:");
 
-        Long setor = banco.queryForObject("SELECT nextval('sequencia_setor')", Long.class);
-        Long gestor = banco.queryForObject("SELECT nextval('sequencia_usuario')", Long.class);
+    Long setor = banco.queryForObject("SELECT nextval('sequencia_setor')", Long.class);
+    Long gestor = banco.queryForObject("SELECT nextval('sequencia_usuario')", Long.class);
 
+    if (postgres) {
+        // No PostgreSQL, a FK gestor_id é diferida até o fim da transação.
+        banco.update(
+                "INSERT INTO setor (id,codigo,nome,gestor_id) VALUES (?,?,?,?)",
+                setor, codigo, "Demonstração " + area, gestor);
+    } else {
+        // No H2, gestor_id aceita NULL e a FK é imediata.
         banco.update(
                 "INSERT INTO setor (id,codigo,nome,gestor_id) VALUES (?,?,?,NULL)",
                 setor, codigo, "Demonstração " + area);
+    }
 
-        banco.update(
-                "INSERT INTO usuario (id,nome,email,senha_hash,perfil,setor_id) VALUES (?,?,?,?,?,?)",
-                gestor, "Gestor " + area, "gestor." + sufixo,
-                senhas.encode(senha), "GESTOR", setor);
+    banco.update(
+            "INSERT INTO usuario (id,nome,email,senha_hash,perfil,setor_id) VALUES (?,?,?,?,?,?)",
+            gestor, "Gestor " + area, "gestor." + sufixo,
+            senhas.encode(senha), "GESTOR", setor);
 
+    if (!postgres) {
         banco.update(
                 "UPDATE setor SET gestor_id = ? WHERE id = ?",
                 gestor, setor);
+    }
 
-        Long comum = banco.queryForObject("SELECT nextval('sequencia_usuario')", Long.class);
+    Long comum = banco.queryForObject("SELECT nextval('sequencia_usuario')", Long.class);
+
+    banco.update(
+            "INSERT INTO usuario (id,nome,email,senha_hash,perfil,setor_id) VALUES (?,?,?,?,?,?)",
+            comum, "Usuário " + area, "comum." + sufixo,
+            senhas.encode(senha), "COMUM", setor);
+
+    if (area.equals("AREA")) {
+        Long administrador = banco.queryForObject(
+                "SELECT nextval('sequencia_usuario')", Long.class);
 
         banco.update(
                 "INSERT INTO usuario (id,nome,email,senha_hash,perfil,setor_id) VALUES (?,?,?,?,?,?)",
-                comum, "Usuário " + area, "comum." + sufixo,
-                senhas.encode(senha), "COMUM", setor);
-
-        if (area.equals("AREA")) {
-            Long administrador = banco.queryForObject(
-                    "SELECT nextval('sequencia_usuario')", Long.class);
-
-            banco.update(
-                    "INSERT INTO usuario (id,nome,email,senha_hash,perfil,setor_id) VALUES (?,?,?,?,?,?)",
-                    administrador, "Administrador de demonstração",
-                    "admin." + sufixo, senhas.encode(senha),
-                    "ADMINISTRADOR", setor);
-        }
-
-        Long localizacao = banco.queryForObject(
-                "SELECT nextval('sequencia_localizacao')", Long.class);
-
-        banco.update(
-                "INSERT INTO localizacao (id,codigo,nome) VALUES (?,?,?)",
-                localizacao, codigo, "Sala de demonstração " + area);
-
-        for (int indice = 1; indice <= 2; indice++) {
-            banco.update("""
-                    INSERT INTO bem_patrimonial
-                    (codigo,descricao,setor_id,localizacao_id,responsavel_id)
-                    VALUES (?,?,?,?,?)
-                    """,
-                    codigo + "-" + indice,
-                    "Bem fictício " + area + " " + indice,
-                    setor, localizacao, comum);
-        }
+                administrador, "Administrador de demonstração",
+                "admin." + sufixo, senhas.encode(senha),
+                "ADMINISTRADOR", setor);
     }
+
+    Long localizacao = banco.queryForObject(
+            "SELECT nextval('sequencia_localizacao')", Long.class);
+
+    banco.update(
+            "INSERT INTO localizacao (id,codigo,nome) VALUES (?,?,?)",
+            localizacao, codigo, "Sala de demonstração " + area);
+
+    for (int indice = 1; indice <= 2; indice++) {
+        banco.update("""
+                INSERT INTO bem_patrimonial
+                (codigo,descricao,setor_id,localizacao_id,responsavel_id)
+                VALUES (?,?,?,?,?)
+                """,
+                codigo + "-" + indice,
+                "Bem fictício " + area + " " + indice,
+                setor, localizacao, comum);
+    }
+}
 }
