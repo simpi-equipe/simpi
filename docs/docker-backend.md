@@ -129,7 +129,7 @@ No `.env` usado pelo contêiner, DB_URL deve apontar para
 Prepare a chave JWT e inicie o banco antes do backend.
 
 ```powershell
-docker build -t simpi-backend:local ./backend
+docker build --pull -t simpi-backend:local ./backend
 docker run -d --name simpi-backend --network simpi-local_default --env-file .env -p 127.0.0.1:8080:8080 simpi-backend:local
 ```
 
@@ -141,6 +141,40 @@ O Flyway aplica migrations pendentes na inicialização; Hibernate somente valid
 o esquema. Migrations não fornecem usuários de demonstração. Há um
 [seed optativo de desenvolvimento](seed-desenvolvimento.md), executado pelo backend
 no host ou em um contêiner temporário na rede do PostgreSQL local.
+
+### Mitigação temporária da CVE-2026-114938
+
+Em 17/11/2026, o [roteiro da Adoptium](https://adoptium.net/support) indicava
+`21.0.13.1` como a próxima atualização do Temurin 21. O
+[catálogo oficial de imagens](https://github.com/docker-library/official-images/blob/master/library/eclipse-temurin)
+listava `21.0.13_9-jdk-jammy` e `21.0.13_9-jre-jammy`. No Docker Hub, as tags
+genéricas `21-jdk-jammy` e `21-jre-jammy` apontavam para os mesmos manifestos
+das respectivas tags versionadas.
+
+O Dockerfile fixa essas duas tags em `21.0.13+9` e desativa os intrínsecos de
+Base64 durante o build Maven e na JVM do backend. Essa é uma mitigação até
+que existam tags oficiais com a correção confirmada para JDK e JRE.
+Referências: [atualização do Java 21 da Oracle](https://www.oracle.com/java/technologies/javase/21-0-13-1-relnotes.html)
+e [orientação de mitigação do Google Cloud](https://docs.cloud.google.com/apigee/docs/hybrid/v1.17/mitigate-cve-2026-114938).
+
+Para reconstruir e conferir a JVM dos dois estágios em contêineres temporários,
+sem rede, portas publicadas ou acesso ao PostgreSQL:
+
+```powershell
+docker build --pull --progress=plain -t simpi-backend:cve-2026-114938-local ./backend
+docker build --pull --target build -t simpi-backend-build:cve-2026-114938-local ./backend
+docker run --rm --network none --entrypoint java simpi-backend-build:cve-2026-114938-local -version
+docker run --rm --network none --entrypoint java simpi-backend:cve-2026-114938-local -version
+
+docker run --rm --network none --entrypoint java simpi-backend-build:cve-2026-114938-local -XX:+PrintFlagsFinal -version | Select-String UseBASE64Intrinsics
+docker image inspect simpi-backend:cve-2026-114938-local --format '{{json .Config.Entrypoint}}'
+docker run --rm --network none --entrypoint java simpi-backend:cve-2026-114938-local -XX:+UnlockDiagnosticVMOptions -XX:-UseBASE64Intrinsics -XX:+PrintFlagsFinal -version | Select-String UseBASE64Intrinsics
+```
+
+Confira `21.0.13+9`, `UseBASE64Intrinsics = false` e as opções da JVM no
+`Entrypoint` da imagem final. Quando a Adoptium publicar as imagens corrigidas,
+confirme as tags e o build de ambos os estágios, substitua as bases, retire a
+mitigação temporária e repita o build e a verificação da versão.
 
 ### Logs, parada e reinício
 
@@ -178,6 +212,28 @@ docker run -d --name simpi-backend --network simpi-local_default --env-file .env
 Essa remoção afeta somente o contêiner do backend, não os volumes do banco.
 `docker start` não adota uma nova imagem nem relê o `.env`.
 Se precisar reconstruir, execute o `docker build` mostrado acima antes da recriação.
+
+### Publicação futura no Render
+
+- Antes do push, confirme a branch vinculada, o `Auto-Deploy`, o caminho do
+  Dockerfile e o contexto de build do serviço. O build precisa usar
+  `backend/Dockerfile` com contexto `backend`. Com a raiz do serviço em `backend`,
+  o caminho do Dockerfile é `./Dockerfile`. Um serviço Docker vinculado ao Git
+  pode iniciar um deploy ao receber um push na branch configurada.
+  [Docker no Render](https://render.com/docs/docker), [deploy automático](https://render.com/docs/deploys#automatic-deploys).
+- Revise eventuais comandos de inicialização personalizados e preserve os
+  valores existentes de `DB_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`,
+  `JWT_SECRET`, `JWT_EXPIRATION` e `CORS_ORIGENS_PERMITIDAS`, além do perfil
+  Spring, da porta e do health check já configurados no serviço.
+- Confira o histórico `flyway_schema_history` do banco de destino em modo
+  somente leitura antes de publicar. As migrações PostgreSQL deste checkout são
+  `V1` (fundação patrimonial) e `V2` (solicitações e movimentação). Esta mudança
+  não inclui migrações. O Flyway aplica as que estiverem pendentes ao iniciar
+  o backend, então registre o resultado da conferência antes de aprovar o push.
+- Após o deploy autorizado, confirme a versão do Java nos logs de inicialização.
+  Use uma conta de teste existente em `POST /api/auth/login` e consulte
+  `GET /api/bens` e `GET /api/solicitacoes` com o token recebido, sem registrar
+  credenciais ou tokens.
 
 ## Integração com o frontend e CORS
 
