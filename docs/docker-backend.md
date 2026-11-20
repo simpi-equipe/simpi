@@ -142,39 +142,30 @@ o esquema. Migrations não fornecem usuários de demonstração. Há um
 [seed optativo de desenvolvimento](seed-desenvolvimento.md), executado pelo backend
 no host ou em um contêiner temporário na rede do PostgreSQL local.
 
-### Mitigação temporária da CVE-2026-114938
+### Eclipse Temurin 21 e CVE-2026-114938
 
-Em 17/11/2026, o [roteiro da Adoptium](https://adoptium.net/support) indicava
-`21.0.13.1` como a próxima atualização do Temurin 21. O
-[catálogo oficial de imagens](https://github.com/docker-library/official-images/blob/master/library/eclipse-temurin)
-listava `21.0.13_9-jdk-jammy` e `21.0.13_9-jre-jammy`. No Docker Hub, as tags
-genéricas `21-jdk-jammy` e `21-jre-jammy` apontavam para os mesmos manifestos
-das respectivas tags versionadas.
+O Dockerfile usa Eclipse Temurin `21.0.13.1+2`, versão que corrige a
+CVE-2026-114938. O build usa `eclipse-temurin:21.0.13.1_2-jdk-jammy` e a
+imagem final usa `eclipse-temurin:21.0.13.1_2-jre-jammy`.
+[Comunicado da Adoptium](https://adoptium.net/news/2026/11/temurin-november-2026-cspu-java4shell) ·
+[Imagens oficiais no Docker Hub](https://hub.docker.com/_/eclipse-temurin).
 
-O Dockerfile fixa essas duas tags em `21.0.13+9` e desativa os intrínsecos de
-Base64 durante o build Maven e na JVM do backend. Essa é uma mitigação até
-que existam tags oficiais com a correção confirmada para JDK e JRE.
-Referências: [atualização do Java 21 da Oracle](https://www.oracle.com/java/technologies/javase/21-0-13-1-relnotes.html)
-e [orientação de mitigação do Google Cloud](https://docs.cloud.google.com/apigee/docs/hybrid/v1.17/mitigate-cve-2026-114938).
-
-Para reconstruir e conferir a JVM dos dois estágios em contêineres temporários,
-sem rede, portas publicadas ou acesso ao PostgreSQL:
+Na raiz do repositório, confira os manifestos, reconstrua a imagem com
+`--pull` e acompanhe o Maven `verify` na saída do build. Os contêineres
+usados para conferir as versões não precisam de rede nem de PostgreSQL.
 
 ```powershell
-docker build --pull --progress=plain -t simpi-backend:cve-2026-114938-local ./backend
-docker build --pull --target build -t simpi-backend-build:cve-2026-114938-local ./backend
-docker run --rm --network none --entrypoint java simpi-backend-build:cve-2026-114938-local -version
-docker run --rm --network none --entrypoint java simpi-backend:cve-2026-114938-local -version
-
-docker run --rm --network none --entrypoint java simpi-backend-build:cve-2026-114938-local -XX:+PrintFlagsFinal -version | Select-String UseBASE64Intrinsics
-docker image inspect simpi-backend:cve-2026-114938-local --format '{{json .Config.Entrypoint}}'
-docker run --rm --network none --entrypoint java simpi-backend:cve-2026-114938-local -XX:+UnlockDiagnosticVMOptions -XX:-UseBASE64Intrinsics -XX:+PrintFlagsFinal -version | Select-String UseBASE64Intrinsics
+docker buildx imagetools inspect eclipse-temurin:21.0.13.1_2-jdk-jammy
+docker buildx imagetools inspect eclipse-temurin:21.0.13.1_2-jre-jammy
+docker build --pull --progress=plain -t simpi-backend:temurin-21.0.13.1-local ./backend
+docker build --pull --target build -t simpi-backend-build:temurin-21.0.13.1-local ./backend
+docker run --rm --network none --entrypoint java simpi-backend-build:temurin-21.0.13.1-local -version
+docker run --rm --network none --entrypoint java simpi-backend:temurin-21.0.13.1-local -version
+docker image inspect simpi-backend:temurin-21.0.13.1-local --format '{{json .Config.Entrypoint}}'
 ```
 
-Confira `21.0.13+9`, `UseBASE64Intrinsics = false` e as opções da JVM no
-`Entrypoint` da imagem final. Quando a Adoptium publicar as imagens corrigidas,
-confirme as tags e o build de ambos os estágios, substitua as bases, retire a
-mitigação temporária e repita o build e a verificação da versão.
+Confira `21.0.13.1+2` na saída do JDK e do JRE e
+`["java","-jar","/app/app.jar"]` no `Entrypoint` da imagem final.
 
 ### Logs, parada e reinício
 
